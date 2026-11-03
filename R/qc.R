@@ -42,6 +42,14 @@
     bad <- grepl("[^ACGTUN]", toupper(sequences))
     sum(reads[bad])/total
 }
+.sequence_kmers <- function(sequence, k) {
+    n_windows <- nchar(sequence) - k + 1L
+    if (n_windows < 1L) {
+        return(character())
+    }
+    starts <- seq_len(n_windows)
+    substring(sequence, starts, starts + k - 1L)
+}
 .top_kmer_fraction <- function(sequences, reads, k = 6L, top_sequences = 10000L) {
     if (!length(sequences) || k < 1L || top_sequences < 1L) {
         return(0)
@@ -49,13 +57,10 @@
     selected <- utils::head(order(reads, decreasing = TRUE, method = "radix"), top_sequences)
     kmer_counts <- numeric()
     for (index in selected) {
-        sequence <- toupper(sequences[[index]])
-        width <- nchar(sequence)
-        if (width < k) {
+        kmers <- .sequence_kmers(toupper(sequences[[index]]), k)
+        if (!length(kmers)) {
             next
         }
-        kmers <- substring(sequence, seq_len(width - k + 1L), seq_len(width - k +
-            1L) + k - 1L)
         unique_kmers <- unique(kmers)
         occurrences <- tabulate(match(kmers, unique_kmers), nbins = length(unique_kmers))
         current <- kmer_counts[unique_kmers]
@@ -99,26 +104,20 @@
         stats::setNames(sampled[keep], names(counts)[keep])
     })
 }
-.canonical_kmer <- function(kmer) {
-    kmer <- toupper(chartr("U", "T", kmer))
-    reverse <- reverse_complement(kmer)
-    if (kmer < reverse)
-        kmer else reverse
-}
 .round_kmer_set <- function(sequences, reads, k = 6L, top_sequences = 10000L) {
     if (!length(sequences) || k < 1L) {
         return(character())
     }
-    selected <- utils::head(order(reads, decreasing = TRUE, method = "radix"), top_sequences)
-    kmers <- unlist(lapply(sequences[selected], function(sequence) {
-        sequence <- toupper(chartr("U", "T", sequence))
-        width <- nchar(sequence)
-        if (width < k)
-            return(character())
-        vapply(substring(sequence, seq_len(width - k + 1L), seq_len(width - k +
-            1L) + k - 1L), .canonical_kmer, character(1))
-    }), use.names = FALSE)
-    unique(kmers)
+    selected <- utils::head(order(reads, decreasing = TRUE, method = "radix"),
+        top_sequences)
+    sequences <- .normalise_adapter_alphabet(sequences[selected])
+    kmers <- unique(unlist(lapply(sequences, .sequence_kmers, k = k),
+        use.names = FALSE))
+    if (!length(kmers)) {
+        return(kmers)
+    }
+    reverse <- reverse_complement(kmers)
+    unique(ifelse(kmers < reverse, kmers, reverse))
 }
 .jaccard_distance <- function(left, right) {
     if (!length(left) && !length(right)) {
@@ -288,137 +287,222 @@
 #' pools <- list(round_00 = rep(paste0(p5, inserts, p3), each = 250))
 #' result <- run_selexprep(pools, low_total_reads = 0)
 #' selexprep_qc(result)
-selexprep_qc <- function(experiment, library_report = NULL, low_total_reads = 10000L,
-    rarefaction_depth = 10000L, rarefaction_seed = 42L, kmer_size = 6L, kmer_top_sequences = 10000L) {
-    if (!inherits(experiment, "SummarizedExperiment")) {
-        stop("`experiment` must be a SummarizedExperiment.", call. = FALSE)
-    }
-    if (!"counts" %in% SummarizedExperiment::assayNames(experiment) || !"sequence" %in%
-        colnames(SummarizedExperiment::rowData(experiment))) {
-        stop("`experiment` must contain a counts assay and rowData$sequence.",
-            call. = FALSE)
-    }
-    if (is.null(library_report)) {
-        library_report <- S4Vectors::metadata(experiment)$library_report
-    }
-    if (!is.null(library_report) && !inherits(library_report, "selexprep_library_report")) {
-        stop("`library_report` must be NULL or a selexprep_library_report.", call. = FALSE)
-    }
-    if (!is.numeric(low_total_reads) || length(low_total_reads) != 1L || is.na(low_total_reads) ||
-        low_total_reads < 0L) {
-        stop("`low_total_reads` must be one non-negative number.", call. = FALSE)
-    }
-    for (argument in c("rarefaction_depth", "rarefaction_seed", "kmer_size", "kmer_top_sequences")) {
-        value <- get(argument)
-        if (!is.numeric(value) || length(value) != 1L || is.na(value) || value <
-            1L || value != floor(value)) {
-            stop(sprintf("`%s` must be one positive integer.", argument), call. = FALSE)
-        }
-    }
-    counts_by_round <- .counts_by_round(experiment)
-    totals <- vapply(counts_by_round, sum, numeric(1))
+selexprep_qc <- function(experiment, library_report = NULL,
+    low_total_reads = 10000L, rarefaction_depth = 10000L,
+    rarefaction_seed = 42L, kmer_size = 6L, kmer_top_sequences = 10000L) {
+    settings <- list(
+        rarefaction_depth = rarefaction_depth,
+        rarefaction_seed = rarefaction_seed,
+        kmer_size = kmer_size, kmer_top_sequences = kmer_top_sequences
+    )
+    library_report <- .validate_qc_inputs(
+        experiment, library_report, low_total_reads, settings
+    )
+    counts <- .counts_by_round(experiment)
+    totals <- vapply(counts, sum, numeric(1))
     positive_totals <- totals[totals > 0]
-    effective_rarefaction_depth <- if (length(positive_totals)) {
+    depth <- if (length(positive_totals)) {
         min(as.numeric(rarefaction_depth), min(positive_totals))
     } else {
         NA_real_
     }
-    rarefied_unique <- vapply(counts_by_round, function(counts) {
-        if (is.na(effective_rarefaction_depth) || !sum(counts)) {
-            return(NA_integer_)
+    per_round <- .qc_per_round(counts, totals, depth, settings)
+    similarity <- .round_kmer_similarity(
+        counts, k = as.integer(kmer_size),
+        top_sequences = as.integer(kmer_top_sequences)
+    )
+    flags <- .qc_flags(
+        per_round, similarity, experiment, library_report,
+        low_total_reads, rarefaction_depth, depth
+    )
+    structure(list(
+        per_round = per_round, round_similarity = similarity,
+        flags = .flags_dataframe(flags), settings = list(
+            rarefaction_depth = as.integer(rarefaction_depth),
+            effective_rarefaction_depth = depth,
+            rarefaction_seed = as.integer(rarefaction_seed),
+            kmer_size = as.integer(kmer_size),
+            kmer_top_sequences = as.integer(kmer_top_sequences)
+        )
+    ), class = c("selexprep_qc", "list"))
+}
+
+.validate_qc_inputs <- function(experiment, report, low_total_reads, settings) {
+    if (!inherits(experiment, "SummarizedExperiment")) {
+        stop("`experiment` must be a SummarizedExperiment.", call. = FALSE)
+    }
+    if (!"counts" %in% SummarizedExperiment::assayNames(experiment) ||
+        !"sequence" %in% colnames(SummarizedExperiment::rowData(experiment))) {
+        stop("`experiment` must contain a counts assay and rowData$sequence.",
+            call. = FALSE)
+    }
+    if (is.null(report)) {
+        report <- S4Vectors::metadata(experiment)$library_report
+    }
+    if (!is.null(report) && !inherits(report, "selexprep_library_report")) {
+        stop("`library_report` must be NULL or a selexprep_library_report.",
+            call. = FALSE)
+    }
+    if (!is.numeric(low_total_reads) || length(low_total_reads) != 1L ||
+        is.na(low_total_reads) || low_total_reads < 0L) {
+        stop("`low_total_reads` must be one non-negative number.",
+            call. = FALSE)
+    }
+    for (argument in names(settings)) {
+        value <- settings[[argument]]
+        if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+            value < 1L || value != floor(value)) {
+            stop(sprintf("`%s` must be one positive integer.", argument),
+                call. = FALSE)
         }
-        length(.rarefy_counts(counts, effective_rarefaction_depth, rarefaction_seed))
-    }, integer(1))
-    gc <- lapply(counts_by_round, function(counts) {
-        .weighted_gc_content(names(counts), counts)
+    }
+    report
+}
+
+.qc_rarefied_unique <- function(counts, depth, seed) {
+    if (is.na(depth) || !sum(counts)) {
+        return(NA_integer_)
+    }
+    length(.rarefy_counts(counts, depth, seed))
+}
+
+.qc_truseq_fraction <- function(counts) {
+    if (!sum(counts)) {
+        return(0)
+    }
+    hits <- grepl("AGATCGGAAGAGC", toupper(names(counts)), fixed = TRUE)
+    sum(counts[hits]) / sum(counts)
+}
+
+.qc_per_round <- function(counts, totals, depth, settings) {
+    gc <- lapply(counts, function(values) {
+        .weighted_gc_content(names(values), values)
     })
-    per_round <- S4Vectors::DataFrame(round = names(counts_by_round), n_reads = unname(totals),
-        n_unique = unname(vapply(counts_by_round, length, integer(1))), shannon_entropy_bits = unname(vapply(counts_by_round,
-            .shannon_entropy, numeric(1))), rarefied_unique = unname(rarefied_unique),
-        singleton_fraction = unname(vapply(counts_by_round, .singleton_fraction,
-            numeric(1))), top_1_coverage = unname(vapply(counts_by_round, .top_n_coverage,
-            numeric(1), n = 1L)), top_100_coverage = unname(vapply(counts_by_round,
-            .top_n_coverage, numeric(1))), modal_sequence_length = unname(vapply(counts_by_round,
-            function(counts) {
-                .modal_sequence_length(names(counts), counts)
-            }, numeric(1))), mean_gc = unname(vapply(gc, `[[`, numeric(1), "mean")),
-        gc_sd = unname(vapply(gc, `[[`, numeric(1), "sd")), nonstandard_alphabet_fraction = unname(vapply(counts_by_round,
-            function(counts) {
-                .weighted_bad_alphabet_fraction(names(counts), counts)
-            }, numeric(1))), truseq_reads_fraction = unname(vapply(counts_by_round,
-            function(counts) {
-                if (!sum(counts))
-                  return(0)
-                sum(counts[grepl("AGATCGGAAGAGC", toupper(names(counts)), fixed = TRUE)])/sum(counts)
-            }, numeric(1))), top_kmer_fraction = unname(vapply(counts_by_round,
-            function(counts) {
-                .top_kmer_fraction(names(counts), counts, k = kmer_size, top_sequences = kmer_top_sequences)
-            }, numeric(1))))
-    round_similarity <- .round_kmer_similarity(counts_by_round, k = as.integer(kmer_size),
-        top_sequences = as.integer(kmer_top_sequences))
-    flags <- list()
-    low_depth <- which(per_round$n_reads < low_total_reads)
-    if (length(low_depth)) {
-        flags <- append(flags, list(.qc_flag("low_total_reads", "warn", list(threshold = low_total_reads,
-            rounds = as.list(per_round$round[low_depth]), reads = as.list(per_round$n_reads[low_depth])))))
+    S4Vectors::DataFrame(
+        round = names(counts), n_reads = unname(totals),
+        n_unique = unname(vapply(counts, length, integer(1))),
+        shannon_entropy_bits = unname(vapply(
+            counts, .shannon_entropy, numeric(1)
+        )),
+        rarefied_unique = unname(vapply(
+            counts, .qc_rarefied_unique, integer(1), depth = depth,
+            seed = settings$rarefaction_seed
+        )),
+        singleton_fraction = unname(vapply(
+            counts, .singleton_fraction, numeric(1)
+        )),
+        top_1_coverage = unname(vapply(
+            counts, .top_n_coverage, numeric(1), n = 1L
+        )),
+        top_100_coverage = unname(vapply(counts, .top_n_coverage, numeric(1))),
+        modal_sequence_length = unname(vapply(counts, function(values) {
+            .modal_sequence_length(names(values), values)
+        }, numeric(1))),
+        mean_gc = unname(vapply(gc, `[[`, numeric(1), "mean")),
+        gc_sd = unname(vapply(gc, `[[`, numeric(1), "sd")),
+        nonstandard_alphabet_fraction = unname(vapply(counts, function(values) {
+            .weighted_bad_alphabet_fraction(names(values), values)
+        }, numeric(1))),
+        truseq_reads_fraction = unname(vapply(
+            counts, .qc_truseq_fraction, numeric(1)
+        )),
+        top_kmer_fraction = unname(vapply(counts, function(values) {
+            .top_kmer_fraction(
+                names(values), values, k = settings$kmer_size,
+                top_sequences = settings$kmer_top_sequences
+            )
+        }, numeric(1)))
+    )
+}
+
+.qc_threshold_flag <- function(per_round, column, threshold, name,
+    evidence_name = "fractions", above = FALSE) {
+    values <- per_round[[column]]
+    indices <- which(if (above) values > threshold else values < threshold)
+    if (!length(indices)) {
+        return(NULL)
     }
-    modal_lengths <- unique(per_round$modal_sequence_length[!is.na(per_round$modal_sequence_length)])
-    if (length(modal_lengths) > 2L) {
-        flags <- append(flags, list(.qc_flag("n_length_variation_across_rounds",
-            "warn", list(modal_lengths = as.list(per_round$modal_sequence_length),
-                distinct_modes = as.list(sort(modal_lengths))))))
+    evidence <- list(
+        threshold = threshold, rounds = as.list(per_round$round[indices])
+    )
+    evidence[[evidence_name]] <- as.list(values[indices])
+    .qc_flag(name, "warn", evidence)
+}
+
+.qc_length_flag <- function(per_round) {
+    lengths <- unique(per_round$modal_sequence_length[
+        !is.na(per_round$modal_sequence_length)
+    ])
+    if (length(lengths) <= 2L) {
+        return(NULL)
     }
-    if (length(counts_by_round) >= 2L && !is.na(effective_rarefaction_depth)) {
-        increases <- which(diff(per_round$rarefied_unique) > 0)
-        if (length(increases)) {
-            flags <- append(flags, list(.qc_flag("unexpected_rarefied_diversity_increase",
-                "warn", list(configured_depth = as.integer(rarefaction_depth),
-                  effective_depth = effective_rarefaction_depth, rarefied_unique_per_round = as.list(stats::setNames(per_round$rarefied_unique,
-                    per_round$round)), increases = lapply(increases, function(index) list(from_round = per_round$round[[index]],
-                    to_round = per_round$round[[index + 1L]], rarefied_unique_prev = per_round$rarefied_unique[[index]],
-                    rarefied_unique_curr = per_round$rarefied_unique[[index + 1L]]))))))
-        }
+    .qc_flag("n_length_variation_across_rounds", "warn", list(
+        modal_lengths = as.list(per_round$modal_sequence_length),
+        distinct_modes = as.list(sort(lengths))
+    ))
+}
+
+.qc_diversity_flag <- function(per_round, configured_depth, depth) {
+    if (nrow(per_round) < 2L || is.na(depth)) {
+        return(NULL)
     }
-    nonstandard <- which(per_round$nonstandard_alphabet_fraction > 0.001)
-    if (length(nonstandard)) {
-        flags <- append(flags, list(.qc_flag("nonstandard_alphabet", "warn", list(threshold = 0.001,
-            rounds = as.list(per_round$round[nonstandard]), fractions = as.list(per_round$nonstandard_alphabet_fraction[nonstandard])))))
+    increases <- which(diff(per_round$rarefied_unique) > 0)
+    if (!length(increases)) {
+        return(NULL)
     }
-    truseq <- which(per_round$truseq_reads_fraction > 0.01)
-    if (length(truseq)) {
-        flags <- append(flags, list(.qc_flag("truseq_residual", "warn", list(threshold = 0.01,
-            rounds = as.list(per_round$round[truseq]), fractions = as.list(per_round$truseq_reads_fraction[truseq])))))
+    .qc_flag("unexpected_rarefied_diversity_increase", "warn", list(
+        configured_depth = as.integer(configured_depth),
+        effective_depth = depth,
+        rarefied_unique_per_round = as.list(stats::setNames(
+            per_round$rarefied_unique, per_round$round
+        )),
+        increases = lapply(increases, function(index) list(
+            from_round = per_round$round[[index]],
+            to_round = per_round$round[[index + 1L]],
+            rarefied_unique_prev = per_round$rarefied_unique[[index]],
+            rarefied_unique_curr = per_round$rarefied_unique[[index + 1L]]
+        ))
+    ))
+}
+
+.qc_library_flags <- function(report, experiment) {
+    if (is.null(report)) {
+        return(list())
     }
-    monotonicity_flag <- .round_kmer_monotonicity_flag(round_similarity)
-    if (!is.null(monotonicity_flag)) {
-        flags <- append(flags, list(monotonicity_flag))
-    }
-    strand_mix_flag <- .strand_mix_flag(experiment)
-    if (!is.null(strand_mix_flag)) {
-        flags <- append(flags, list(strand_mix_flag))
-    }
-    if (!is.null(library_report)) {
-        low_sides <- character()
-        if (library_report$match_rate_5p < 0.4)
-            low_sides <- c(low_sides, "5p")
-        if (library_report$match_rate_3p < 0.4)
-            low_sides <- c(low_sides, "3p")
-        if (length(low_sides)) {
-            flags <- append(flags, list(.qc_flag("low_primer_match", "warn", list(threshold = 0.4,
-                sides = as.list(low_sides)))))
-        }
-        if (identical(library_report$required_action, "READ_MERGING_RECOMMENDED")) {
-            flags <- append(flags, list(.qc_flag("requires_read_merging_for_full_insert",
-                "info", list(extraction_mode = library_report$extraction_mode))))
-        }
-        adapter_flag <- .adapter_contamination_flag(library_report, experiment)
-        if (!is.null(adapter_flag)) {
-            flags <- append(flags, list(adapter_flag))
-        }
-    }
-    structure(list(per_round = per_round, round_similarity = round_similarity,
-        flags = .flags_dataframe(flags), settings = list(rarefaction_depth = as.integer(rarefaction_depth),
-            effective_rarefaction_depth = effective_rarefaction_depth, rarefaction_seed = as.integer(rarefaction_seed),
-            kmer_size = as.integer(kmer_size), kmer_top_sequences = as.integer(kmer_top_sequences))),
-        class = c("selexprep_qc", "list"))
+    sides <- character()
+    if (report$match_rate_5p < 0.4) sides <- c(sides, "5p")
+    if (report$match_rate_3p < 0.4) sides <- c(sides, "3p")
+    list(
+        if (length(sides)) .qc_flag("low_primer_match", "warn", list(
+            threshold = 0.4, sides = as.list(sides)
+        )),
+        if (identical(report$required_action, "READ_MERGING_RECOMMENDED")) {
+            .qc_flag("requires_read_merging_for_full_insert", "info", list(
+                extraction_mode = report$extraction_mode
+            ))
+        },
+        .adapter_contamination_flag(report, experiment)
+    )
+}
+
+.qc_flags <- function(per_round, similarity, experiment, report,
+    low_total_reads, configured_depth, depth) {
+    flags <- list(
+        .qc_threshold_flag(
+            per_round, "n_reads", low_total_reads, "low_total_reads", "reads"
+        ),
+        .qc_length_flag(per_round),
+        .qc_diversity_flag(per_round, configured_depth, depth),
+        .qc_threshold_flag(
+            per_round, "nonstandard_alphabet_fraction", 0.001,
+            "nonstandard_alphabet", above = TRUE
+        ),
+        .qc_threshold_flag(
+            per_round, "truseq_reads_fraction", 0.01, "truseq_residual",
+            above = TRUE
+        ),
+        .round_kmer_monotonicity_flag(similarity),
+        .strand_mix_flag(experiment)
+    )
+    Filter(Negate(is.null), c(flags, .qc_library_flags(report, experiment)))
 }

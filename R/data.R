@@ -7,6 +7,11 @@
 #' provenance-rich JSON and its generation materials are stored in
 #' `S4Vectors::metadata(selexprep_public_catalog)`.
 #'
+#' The catalog compilation and curation annotations are MIT-licensed under
+#' the pinned upstream grant. Source papers and sequencing reads are not
+#' distributed as part of this dataset; their terms are recorded separately
+#' in the installed `DATA_LICENSES.md` file.
+#'
 #' Missing values mean that a field was not stated in the curated sources. A
 #' `adjudicated` means that the two extraction arms disagreed and the value
 #' was resolved using the source evidence. The canonical provenance JSON
@@ -38,12 +43,18 @@
 #' }
 #'
 #' Curation statuses are `adjudicated`, `concordant`, `not_stated`, `verified`,
-#' `single_source:claude`, or `single_source:codex`.
+#' `single_source:claude`, or `single_source:codex`. These describe upstream
+#' curation; a status alone does not establish human validation. Maintainer
+#' spot checks are documented separately in `CATALOG_PROVENANCE.md`.
 #'
 #' @source The snapshot was migrated without modification from the original
 #'   selexprep v0.4.6 catalog at commit
 #'   `63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5`. See the object metadata and
 #'   `inst/CATALOG_PROVENANCE.md` for immutable source links and terms.
+#' @examples
+#' data("selexprep_public_catalog", package = "selexprepR")
+#' head(selexprep_public_catalog[, c("bioproject_id", "study_type", "target")])
+#' S4Vectors::metadata(selexprep_public_catalog)$snapshot_version
 #' @usage data(selexprep_public_catalog)
 #' @keywords datasets
 "selexprep_public_catalog"

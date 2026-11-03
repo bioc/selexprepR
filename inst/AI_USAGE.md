@@ -21,3 +21,13 @@ and recorded supported-environment CI requirements in ALIGNMENT_VALIDATION.md.
 
 This disclosure should also be included in the BiocContributions submission
 issue, together with any additional AI assistance used after this snapshot.
+
+The November 2026 reviewer response separates software validation from human
+catalog checking. The maintainer reported five manual source-based record
+checks with no discrepancies in the fields checked; identifiers were not
+recorded. Ten additional randomly selected records have been prepared for
+manual checking, with results still pending in the source `review/` directory.
+Neither model agreement nor passing regression tests is described as a human
+check. The November code and documentation changes also used Codex and
+parallel agents; verification evidence and local-environment limits are
+recorded in `REVIEW_VALIDATION.md`.

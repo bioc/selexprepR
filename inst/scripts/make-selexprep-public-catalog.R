@@ -84,8 +84,9 @@ S4Vectors::metadata(selexprep_public_catalog) <- list(
         "reconciliation and adjudication of disagreements."
     ),
     terms_notice = paste(
-        "The package code is MIT-licensed. Public record metadata remains",
-        "subject to the terms of its originating repository or publication."
+        "The catalog compilation and curation annotations are MIT-licensed",
+        "under the upstream selexprep grant. Source material has separate",
+        "terms; see DATA_LICENSES.md and licenses/selexprep-MIT.txt."
     )
 )
 

@@ -62,7 +62,19 @@ intentional R interface differences, and reproducible regression references.
 
 ## Development status
 
-This is the `0.99.6` submission candidate for Bioconductor. Development of the
+This is the `0.99.7` submission candidate for Bioconductor. Development of the
 R package is hosted at <https://github.com/marcorotanegroni/selexprepR>; the
 original Python implementation remains available at
 <https://github.com/marcorotanegroni/selexprep>.
+
+## Example data and redistribution
+
+The vignette uses small real sequencing subsets and includes executable
+FASTQ, demultiplexing and QC examples. File-level sources, licenses and
+subsetting details are distributed with the data. See
+[the data-license inventory](inst/DATA_LICENSES.md) and
+[catalog provenance](inst/CATALOG_PROVENANCE.md).
+
+The catalog retains its upstream curation statuses. Human spot checks are
+recorded separately; agreement between the two extraction models is not
+presented as human validation.

@@ -48,8 +48,10 @@ merges their runs into one round pool, so review replicates or parallel
 selections before proceeding. The assignments are retained.
 }
 \examples{
-\donttest{
-inspection <- inspect_selexprep_accession('PRJDB19098')
-fetch_selexprep_reads(inspection, 'raw/PRJDB19098')
-}
+# Plan from a bundled ENA metadata snapshot; no network or files written.
+path <- system.file("extdata", "ena-inspection.rds", package = "selexprepR")
+inspection <- readRDS(path)
+result <- fetch_selexprep_reads(inspection, tempfile("selexprep-reads-"))
+result$plan[, c("run_accession", "round_number", "file_name")]
+result$dry_run
 }

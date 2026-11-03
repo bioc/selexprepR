@@ -43,10 +43,20 @@ jointly retained pairs once per R1 input; unused R2 files are excluded from
 single-read yield diagnostics. Empty files have an undefined yield.
 }
 \examples{
-\donttest{
+# This two-read toy library supplies its known primers explicitly.
+p5 <- "GGTAATACGACTCACTATAGGG"
+p3 <- "CCATGCATGCATGCATGCAT"
+sequences <- paste0(p5, c("ACGT", "TGCA"), p3)
+records <- as.vector(rbind(
+    paste0("@read_", seq_along(sequences)), sequences,
+    "+", strrep("I", nchar(sequences))
+))
+path <- tempfile(fileext = ".fastq")
+writeLines(records, path)
 experiment <- run_selexprep_files(
-    c(round_00 = 'round_00.fastq.gz',
-      round_01 = 'round_01.fastq.gz')
+    path, round = 0, primer_5p = p5, primer_3p = p3,
+    extraction_mode = "BOTH_PRIMERS_SINGLE_READ", low_total_reads = 0
 )
-}
+S4Vectors::metadata(experiment)$qc$per_round
+unlink(path)
 }

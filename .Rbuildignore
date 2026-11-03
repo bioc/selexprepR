@@ -9,3 +9,4 @@
 ^selexprep_[0-9.-]+\.tar\.gz$
 ^selexprepR_[0-9.-]+\.tar\.gz$
 ^upstream-selexprep($|/)
+^review$

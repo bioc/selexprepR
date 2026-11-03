@@ -31,7 +31,9 @@ counter-selection conditions and their reconciliation status.}
 }
 
 Curation statuses are \code{adjudicated}, \code{concordant}, \code{not_stated}, \code{verified},
-\code{single_source:claude}, or \code{single_source:codex}.
+\code{single_source:claude}, or \code{single_source:codex}. These describe upstream
+curation; a status alone does not establish human validation. Maintainer
+spot checks are documented separately in \code{CATALOG_PROVENANCE.md}.
 }
 \source{
 The snapshot was migrated without modification from the original
@@ -51,9 +53,19 @@ provenance-rich JSON and its generation materials are stored in
 \code{S4Vectors::metadata(selexprep_public_catalog)}.
 }
 \details{
+The catalog compilation and curation annotations are MIT-licensed under
+the pinned upstream grant. Source papers and sequencing reads are not
+distributed as part of this dataset; their terms are recorded separately
+in the installed \code{DATA_LICENSES.md} file.
+
 Missing values mean that a field was not stated in the curated sources. A
 \code{adjudicated} means that the two extraction arms disagreed and the value
 was resolved using the source evidence. The canonical provenance JSON
 retains both original values and the adjudication rationale.
+}
+\examples{
+data("selexprep_public_catalog", package = "selexprepR")
+head(selexprep_public_catalog[, c("bioproject_id", "study_type", "target")])
+S4Vectors::metadata(selexprep_public_catalog)$snapshot_version
 }
 \keyword{datasets}

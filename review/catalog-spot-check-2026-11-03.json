@@ -1,0 +1,908 @@
+{
+  "seed": "5907265769135269765",
+  "csv_sha256": "121b599786a718d877bd950660a3a4e0ec178db2f1b54636815d575185c3e0fe",
+  "n_records": 240,
+  "selection": "simple random sample without replacement, Python random.Random(seed).sample",
+  "records": [
+    {
+      "bioproject_id": "figshare:131490",
+      "source": "figshare:131490",
+      "study_title": "Probing the Limits of Aptamer Affinity with a Microfluidic SELEX Platform",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "platelet derived growth factor B (PDGF-BB), thrombin, and apolipoprotein E3 (ApoE)",
+      "target_curation": "concordant",
+      "target_class": "protein",
+      "target_class_curation": "concordant",
+      "chemistry": "single-stranded DNA (ssDNA)",
+      "chemistry_curation": "concordant",
+      "n_random": "60 randomized nucleotides",
+      "n_random_curation": "concordant",
+      "n_rounds": "three rounds",
+      "n_rounds_curation": "concordant",
+      "selection_format": "M-SELEX (microfluidic SELEX)",
+      "selection_format_curation": "concordant",
+      "counter_selection": "",
+      "counter_selection_curation": "not_stated",
+      "record_url": "https://figshare.com/articles/131490",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Abstract"
+        },
+        "target": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Methods section"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Methods section"
+        },
+        "chemistry": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Methods section"
+        },
+        "n_random": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Methods section"
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Methods section"
+        },
+        "selection_format": {
+          "source": "https://doi.org/10.1371/journal.pone.0027051",
+          "location": "Introduction/Methods section"
+        },
+        "counter_selection": {
+          "source": null,
+          "location": ""
+        }
+      }
+    },
+    {
+      "bioproject_id": "PRJNA916521",
+      "source": "ena",
+      "study_title": "Antibody-Free and Fast Profiling of Transcription Factor Binding Sites Using Aptamer-Guided Chromatin Cleavage with Sequencing (AptaChC-seq)",
+      "study_type": "not_selex",
+      "study_type_curation": "concordant",
+      "target": "",
+      "target_curation": "not_stated",
+      "target_class": "",
+      "target_class_curation": "not_stated",
+      "chemistry": "",
+      "chemistry_curation": "not_stated",
+      "n_random": "",
+      "n_random_curation": "not_stated",
+      "n_rounds": "",
+      "n_rounds_curation": "not_stated",
+      "selection_format": "",
+      "selection_format_curation": "not_stated",
+      "counter_selection": "",
+      "counter_selection_curation": "not_stated",
+      "record_url": "https://www.ebi.ac.uk/ena/browser/view/PRJNA916521",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://www.ncbi.nlm.nih.gov/bioproject/PRJNA916521",
+          "location": "BioProject title"
+        },
+        "target": {
+          "source": null,
+          "location": ""
+        },
+        "target_class": {
+          "source": null,
+          "location": ""
+        },
+        "chemistry": {
+          "source": null,
+          "location": ""
+        },
+        "n_random": {
+          "source": null,
+          "location": ""
+        },
+        "n_rounds": {
+          "source": null,
+          "location": ""
+        },
+        "selection_format": {
+          "source": null,
+          "location": ""
+        },
+        "counter_selection": {
+          "source": null,
+          "location": ""
+        }
+      }
+    },
+    {
+      "bioproject_id": "figshare:771239",
+      "source": "figshare:771239",
+      "study_title": "Development of an Efficient Targeted Cell-SELEX Procedure for DNA Aptamer Reagents",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "murine c-kit receptor (expressed on BJAB c-kit cells)",
+      "target_curation": "concordant",
+      "target_class": "cell surface receptor",
+      "target_class_curation": "concordant",
+      "chemistry": "ssDNA",
+      "chemistry_curation": "concordant",
+      "n_random": "29 nucleotides",
+      "n_random_curation": "concordant",
+      "n_rounds": "six rounds",
+      "n_rounds_curation": "concordant",
+      "selection_format": "STACS (Specific TArget Cell-SELEX)",
+      "selection_format_curation": "concordant",
+      "counter_selection": "present",
+      "counter_selection_curation": "concordant",
+      "record_url": "https://figshare.com/articles/771239",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Results – STACS Method Overview"
+        },
+        "target": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Abstract – Methodology"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Discussion"
+        },
+        "chemistry": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Materials and Methods – Cell SELEX with DNA Aptamer Library"
+        },
+        "n_random": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Materials and Methods – Cell SELEX with DNA Aptamer Library"
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Results – Cell-SELEX"
+        },
+        "selection_format": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Introduction"
+        },
+        "counter_selection": {
+          "source": "https://doi.org/10.1371/journal.pone.0071798",
+          "location": "Results – STACS Method Overview"
+        }
+      }
+    },
+    {
+      "bioproject_id": "figshare:8118461",
+      "source": "figshare:8118461",
+      "study_title": "High Affinity Aptamer for the Detection of the Biogenic\nAmine Histamine",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "histamine",
+      "target_curation": "concordant",
+      "target_class": "small molecule",
+      "target_class_curation": "concordant",
+      "chemistry": "DNA",
+      "chemistry_curation": "concordant",
+      "n_random": "",
+      "n_random_curation": "not_stated",
+      "n_rounds": "ten rounds",
+      "n_rounds_curation": "concordant",
+      "selection_format": "classic SELEX employing magnetic beads for target immobilization",
+      "selection_format_curation": "concordant",
+      "counter_selection": "present",
+      "counter_selection_curation": "concordant",
+      "record_url": "https://figshare.com/articles/8118461",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        },
+        "target": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        },
+        "chemistry": {
+          "source": "https://ndownloader.figshare.com/files/15135875",
+          "location": "Supporting Information, S1 Materials"
+        },
+        "n_random": {
+          "source": null,
+          "location": ""
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        },
+        "selection_format": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        },
+        "counter_selection": {
+          "source": "https://doi.org/10.1021/acs.analchem.9b00075",
+          "location": "Abstract"
+        }
+      }
+    },
+    {
+      "bioproject_id": "PRJEB46967",
+      "source": "ena",
+      "study_title": "In Vitro Selection of DNA Molecules Favouring Intramolecular Circularization by DNA Ligase",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "adjudicated",
+      "target": "T4DL",
+      "target_curation": "single_source:codex",
+      "target_class": "DNA ligase",
+      "target_class_curation": "single_source:codex",
+      "chemistry": "DNA",
+      "chemistry_curation": "concordant",
+      "n_random": "N40",
+      "n_random_curation": "single_source:codex",
+      "n_rounds": "14 SELEX cycles",
+      "n_rounds_curation": "single_source:codex",
+      "selection_format": "in vitro selection",
+      "selection_format_curation": "concordant",
+      "counter_selection": "",
+      "counter_selection_curation": "not_stated",
+      "record_url": "https://www.ebi.ac.uk/ena/browser/view/PRJEB46967",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": null,
+          "location": ""
+        },
+        "target": {
+          "source": "https://doi.org/10.1021/jacs.2c12666",
+          "location": "Introduction"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1021/jacs.2c12666",
+          "location": "Introduction"
+        },
+        "chemistry": {
+          "source": "https://www.ebi.ac.uk/ena/browser/view/PRJEB46967",
+          "location": "ENA study description"
+        },
+        "n_random": {
+          "source": "https://doi.org/10.1021/jacs.2c12666",
+          "location": "Results and Discussion, In Vitro Selection"
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1021/jacs.2c12666",
+          "location": "Results and Discussion, In Vitro Selection"
+        },
+        "selection_format": {
+          "source": "https://www.ebi.ac.uk/ena/browser/view/PRJEB46967",
+          "location": "ENA study description"
+        },
+        "counter_selection": {
+          "source": null,
+          "location": ""
+        }
+      }
+    },
+    {
+      "bioproject_id": "figshare:29756624",
+      "source": "figshare:29756624",
+      "study_title": "Supplementary file 1_Design and development of an aptamer targeting C-type lectin-like molecule-1 as a biomarker for acute myeloid leukemia: a SELEX approach.zip",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "C-type lectin-like molecule-1 (CLL-1)",
+      "target_curation": "concordant",
+      "target_class": "protein (transmembrane glycoprotein / cell surface marker)",
+      "target_class_curation": "concordant",
+      "chemistry": "ssDNA (76-nt library)",
+      "chemistry_curation": "concordant",
+      "n_random": "",
+      "n_random_curation": "not_stated",
+      "n_rounds": "eight rounds",
+      "n_rounds_curation": "single_source:claude",
+      "selection_format": "magnetic bead-based SELEX (protein-coupled magnetic beads)",
+      "selection_format_curation": "concordant",
+      "counter_selection": "present",
+      "counter_selection_curation": "concordant",
+      "record_url": "https://figshare.com/articles/29756624",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Title"
+        },
+        "target": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods"
+        },
+        "target_class": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods/Results"
+        },
+        "chemistry": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods"
+        },
+        "n_random": {
+          "source": null,
+          "location": ""
+        },
+        "n_rounds": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods"
+        },
+        "selection_format": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods"
+        },
+        "counter_selection": {
+          "source": "https://www.frontiersin.org/articles/10.3389/fbioe.2025.1601453/full",
+          "location": "Methods"
+        }
+      }
+    },
+    {
+      "bioproject_id": "PRJNA957781",
+      "source": "ena",
+      "study_title": "SELEX-seq of AP1 homodimer",
+      "study_type": "tf_ht_selex",
+      "study_type_curation": "concordant",
+      "target": "AP1 (APETALA1)",
+      "target_curation": "concordant",
+      "target_class": "transcription factor (MADS-domain protein)",
+      "target_class_curation": "concordant",
+      "chemistry": "dsDNA",
+      "chemistry_curation": "concordant",
+      "n_random": "20 random nucleotides",
+      "n_random_curation": "single_source:claude",
+      "n_rounds": "4 rounds",
+      "n_rounds_curation": "concordant",
+      "selection_format": "SELEX-seq",
+      "selection_format_curation": "adjudicated",
+      "counter_selection": "",
+      "counter_selection_curation": "not_stated",
+      "record_url": "https://www.ebi.ac.uk/ena/browser/view/PRJNA957781",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://www.ncbi.nlm.nih.gov/bioproject/PRJNA957781",
+          "location": "BioProject description"
+        },
+        "target": {
+          "source": "https://doi.org/10.1186/s13059-025-03884-0",
+          "location": "Methods, SELEX-seq section"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1186/s13059-025-03884-0",
+          "location": "Abstract"
+        },
+        "chemistry": {
+          "source": "https://doi.org/10.1186/s13059-025-03884-0",
+          "location": "Methods, SELEX-seq section"
+        },
+        "n_random": {
+          "source": "https://doi.org/10.1186/s13059-025-03884-0",
+          "location": "Methods, SELEX-seq section"
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1186/s13059-025-03884-0",
+          "location": "Methods, SELEX-seq section"
+        },
+        "selection_format": {
+          "source": null,
+          "location": ""
+        },
+        "counter_selection": {
+          "source": null,
+          "location": ""
+        }
+      }
+    },
+    {
+      "bioproject_id": "PRJEB61115",
+      "source": "ena",
+      "study_title": "HT-SELEX data for: GHT-SELEX demonstrates unexpectedly high intrinsic sequence specificity of human transcription factors",
+      "study_type": "tf_ht_selex",
+      "study_type_curation": "concordant",
+      "target": "human transcription factors (Codebook putative TF set, 331 poorly characterized putative human TFs)",
+      "target_curation": "concordant",
+      "target_class": "human transcription factors (proteins)",
+      "target_class_curation": "concordant",
+      "chemistry": "double-stranded DNA: fragmented genomic DNA (GHT-SELEX) and random 40N synthetic ligands (HT-SELEX)",
+      "chemistry_curation": "concordant",
+      "n_random": "random 40N ligands (HT-SELEX); GHT-SELEX uses fragmented genomic DNA with no randomized region",
+      "n_random_curation": "concordant",
+      "n_rounds": "number of cycles varied across 21 SELEX batches (per-experiment cycle counts recorded in Table S3)",
+      "n_rounds_curation": "single_source:claude",
+      "selection_format": "GHT-SELEX (Genomic HT-SELEX) and HT-SELEX",
+      "selection_format_curation": "concordant",
+      "counter_selection": "",
+      "counter_selection_curation": "not_stated",
+      "record_url": "https://www.ebi.ac.uk/ena/browser/view/PRJEB61115",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://www.ebi.ac.uk/ena/browser/view/PRJEB61115",
+          "location": "ENA Project description"
+        },
+        "target": {
+          "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11601218/",
+          "location": "Methods, Application of GHT-SELEX to the Codebook TF set"
+        },
+        "target_class": {
+          "source": "https://www.ebi.ac.uk/ena/browser/view/PRJEB61115",
+          "location": "ENA Project description"
+        },
+        "chemistry": {
+          "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11601218/",
+          "location": "Methods, Application of GHT-SELEX to the Codebook TF set"
+        },
+        "n_random": {
+          "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11601218/",
+          "location": "Methods, Application of GHT-SELEX to the Codebook TF set"
+        },
+        "n_rounds": {
+          "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11601218/",
+          "location": "Methods, HT- and GHT-SELEX"
+        },
+        "selection_format": {
+          "source": "https://www.ebi.ac.uk/ena/browser/view/PRJEB61115",
+          "location": "ENA Project description"
+        },
+        "counter_selection": {
+          "source": null,
+          "location": ""
+        }
+      }
+    },
+    {
+      "bioproject_id": "zenodo:14272647",
+      "source": "zenodo:14272647",
+      "study_title": "Structure-enhanced Deep Learning Accelerates Aptamer Selection for Small Molecule Families like Steroids",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "hydrocortisone (cortisol)",
+      "target_curation": "concordant",
+      "target_class": "small molecule (steroid)",
+      "target_class_curation": "concordant",
+      "chemistry": "ssDNA",
+      "chemistry_curation": "single_source:claude",
+      "n_random": "",
+      "n_random_curation": "not_stated",
+      "n_rounds": "rounds 3, 5, and 7 (NGS sequencing rounds for this AptaVAE-guided library)",
+      "n_rounds_curation": "concordant",
+      "selection_format": "DL-SELEX (AptaVAE-guided SELEX with iterative rounds of qPCR, annealing, selection, and asPCR)",
+      "selection_format_curation": "concordant",
+      "counter_selection": "present",
+      "counter_selection_curation": "single_source:claude",
+      "record_url": "https://zenodo.org/records/14272647",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Methods, AptaClux: summarizing key consensus aptamer candidates from the HT-NGS result"
+        },
+        "target": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Results"
+        },
+        "target_class": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Abstract"
+        },
+        "chemistry": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Introduction"
+        },
+        "n_random": {
+          "source": null,
+          "location": ""
+        },
+        "n_rounds": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Methods, AptaClux: summarizing key consensus aptamer candidates from the HT-NGS result"
+        },
+        "selection_format": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Methods, Standardized and simplified selection protocol"
+        },
+        "counter_selection": {
+          "source": "https://doi.org/10.1093/bib/bbaf680",
+          "location": "Results"
+        }
+      }
+    },
+    {
+      "bioproject_id": "figshare:14057938",
+      "source": "figshare:14057938",
+      "study_title": "Selection of DNA Aptamers for Root Exudate l‑Serine Using Multiple Selection Strategies",
+      "study_type": "aptamer_selection",
+      "study_type_curation": "concordant",
+      "target": "l-serine",
+      "target_curation": "concordant",
+      "target_class": "small molecule",
+      "target_class_curation": "concordant",
+      "chemistry": "DNA",
+      "chemistry_curation": "concordant",
+      "n_random": "",
+      "n_random_curation": "not_stated",
+      "n_rounds": "Original SELEX: 11 rounds; Randomized SELEX: 8 rounds; Redirected SELEX: 5 rounds",
+      "n_rounds_curation": "single_source:claude",
+      "selection_format": "SELEX (three strategies: Original SELEX, Randomized SELEX, Redirected SELEX)",
+      "selection_format_curation": "concordant",
+      "counter_selection": "present",
+      "counter_selection_curation": "concordant",
+      "record_url": "https://figshare.com/articles/14057938",
+      "verification": {
+        "study_type": {
+          "result": null,
+          "notes": ""
+        },
+        "target": {
+          "result": null,
+          "notes": ""
+        },
+        "target_class": {
+          "result": null,
+          "notes": ""
+        },
+        "chemistry": {
+          "result": null,
+          "notes": ""
+        },
+        "n_random": {
+          "result": null,
+          "notes": ""
+        },
+        "n_rounds": {
+          "result": null,
+          "notes": ""
+        },
+        "selection_format": {
+          "result": null,
+          "notes": ""
+        },
+        "counter_selection": {
+          "result": null,
+          "notes": ""
+        }
+      },
+      "provenance": {
+        "study_type": {
+          "source": "https://pubmed.ncbi.nlm.nih.gov/33600189/",
+          "location": "Abstract"
+        },
+        "target": {
+          "source": "https://pubmed.ncbi.nlm.nih.gov/33600189/",
+          "location": "Abstract"
+        },
+        "target_class": {
+          "source": "https://pubmed.ncbi.nlm.nih.gov/33600189/",
+          "location": "Abstract"
+        },
+        "chemistry": {
+          "source": "https://pubmed.ncbi.nlm.nih.gov/33600189/",
+          "location": "Abstract"
+        },
+        "n_random": {
+          "source": null,
+          "location": ""
+        },
+        "n_rounds": {
+          "source": "https://ndownloader.figshare.com/files/26536153",
+          "location": "Table S3 in Supplementary Information (jf0c06796_si_001.pdf)"
+        },
+        "selection_format": {
+          "source": "https://pubmed.ncbi.nlm.nih.gov/33600189/",
+          "location": "Abstract"
+        },
+        "counter_selection": {
+          "source": "https://ndownloader.figshare.com/files/26536153",
+          "location": "Table S2 and footnote in Supplementary Information (jf0c06796_si_001.pdf)"
+        }
+      }
+    }
+  ]
+}

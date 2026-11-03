@@ -162,7 +162,34 @@
 #' writeLines(c('@read_1', 'ACGT', '+', 'IIII'), path)
 #' inputs <- read_selexprep_inputs(path, round = 0)
 #' inputs$sequences_by_round
-read_selexprep_inputs <- function(x, round = NULL, mate = NULL, max_reads_per_file = NULL) {
+read_selexprep_inputs <- function(x, round = NULL, mate = NULL,
+    max_reads_per_file = NULL) {
+    table <- .prepare_fastq_input_table(x, round, mate)
+    paired <- any(table$mate == "R2")
+    rounds <- sort(unique(table$round_number), method = "radix")
+    if (paired) .validate_paired_fastq_layout(table, rounds)
+    loaded <- .load_fastq_input_files(table, max_reads_per_file)
+    table <- loaded$table
+    sequences_by_round <- .combine_input_mate(loaded$sets, table, rounds, "R1")
+    paired_mate_streams <- if (paired) {
+        .combine_input_mate(loaded$sets, table, rounds, "R2")
+    } else {
+        NULL
+    }
+    if (paired) {
+        .validate_paired_pool_sizes(sequences_by_round, paired_mate_streams)
+    }
+    file_order <- order(table$round_number, match(table$mate, c("R1", "R2")),
+        seq_len(nrow(table)), method = "radix")
+    structure(list(
+        sequences_by_round = sequences_by_round,
+        paired_mate_streams = paired_mate_streams,
+        read_source = if (paired) "R1_AND_R2" else "R1",
+        files = S4Vectors::DataFrame(table[file_order, , drop = FALSE])
+    ), class = c("selexprep_read_inputs", "list"))
+}
+
+.prepare_fastq_input_table <- function(x, round, mate) {
     table <- if (inherits(x, "selexprep_fetch_result")) {
         .fetch_result_input_table(x)
     } else {
@@ -182,54 +209,51 @@ read_selexprep_inputs <- function(x, round = NULL, mate = NULL, max_reads_per_fi
     if (anyDuplicated(table$path)) {
         stop("Each FASTQ path may appear only once.", call. = FALSE)
     }
-    supplied_mate <- if (all(is.na(table$mate)))
-        NULL else table$mate
+    supplied_mate <- if (all(is.na(table$mate))) NULL else table$mate
     table$mate <- .normalise_fastq_mates(supplied_mate, table$path)
-    paired <- any(table$mate == "R2")
-    rounds <- sort(unique(table$round_number), method = "radix")
-    if (paired) {
-        complete <- vapply(rounds, function(value) {
-            labels <- unique(table$mate[table$round_number == value])
-            identical(sort(labels), c("R1", "R2"))
-        }, logical(1))
-        if (!all(complete)) {
-            stop("Paired-end inputs require both R1 and R2 in every round.", call. = FALSE)
-        }
+    table
+}
+
+.validate_paired_fastq_layout <- function(table, rounds) {
+    complete <- vapply(rounds, function(value) {
+        labels <- unique(table$mate[table$round_number == value])
+        identical(sort(labels), c("R1", "R2"))
+    }, logical(1))
+    if (!all(complete)) {
+        stop("Paired-end inputs require both R1 and R2 in every round.",
+            call. = FALSE)
     }
-    sets <- lapply(table$path, read_selexprep_fastq, max_reads = max_reads_per_file)
+}
+
+.load_fastq_input_files <- function(table, max_reads) {
+    sets <- lapply(table$path, read_selexprep_fastq, max_reads = max_reads)
     table$reads_loaded <- vapply(sets, length, integer(1))
     table$file_size <- unname(file.info(table$path)$size)
     table$md5 <- vapply(table$path, digest::digest, character(1), algo = "md5",
         file = TRUE)
     table$sha256 <- vapply(table$path, digest::digest, character(1), algo = "sha256",
         file = TRUE)
-    round_names <- sprintf("round_%02d", rounds)
-    combine_mate <- function(label) {
-        pools <- lapply(rounds, function(value) {
-            keep <- table$round_number == value & table$mate == label
-            .combine_fastq_sets(sets[keep])
-        })
-        stats::setNames(pools, round_names)
-    }
-    sequences_by_round <- combine_mate("R1")
-    paired_mate_streams <- if (paired)
-        combine_mate("R2") else NULL
-    if (paired) {
-        r1_reads <- vapply(sequences_by_round, length, integer(1))
-        r2_reads <- vapply(paired_mate_streams, length, integer(1))
-        unequal <- r1_reads != r2_reads
-        if (any(unequal)) {
-            stop(sprintf("Paired streams have different read counts in %s.",
-                toString(names(r1_reads)[unequal])), call. = FALSE)
-        }
-    }
-    file_order <- order(table$round_number, match(table$mate, c("R1", "R2")), seq_len(n_files),
-        method = "radix")
-    files <- S4Vectors::DataFrame(table[file_order, , drop = FALSE])
-    structure(list(sequences_by_round = sequences_by_round, paired_mate_streams = paired_mate_streams,
-        read_source = if (paired) "R1_AND_R2" else "R1", files = files), class = c("selexprep_read_inputs",
-        "list"))
+    list(table = table, sets = sets)
 }
+
+.combine_input_mate <- function(sets, table, rounds, label) {
+    pools <- lapply(rounds, function(value) {
+        keep <- table$round_number == value & table$mate == label
+        .combine_fastq_sets(sets[keep])
+    })
+    stats::setNames(pools, sprintf("round_%02d", rounds))
+}
+
+.validate_paired_pool_sizes <- function(r1, r2) {
+    r1_reads <- vapply(r1, length, integer(1))
+    r2_reads <- vapply(r2, length, integer(1))
+    unequal <- r1_reads != r2_reads
+    if (any(unequal)) {
+        stop(sprintf("Paired streams have different read counts in %s.",
+            toString(names(r1_reads)[unequal])), call. = FALSE)
+    }
+}
+
 #' Run selexprepR directly from FASTQ files
 #'
 #' Convenience bridge combining [read_selexprep_inputs()] and
@@ -249,12 +273,22 @@ read_selexprep_inputs <- function(x, round = NULL, mate = NULL, max_reads_per_fi
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' # This two-read toy library supplies its known primers explicitly.
+#' p5 <- "GGTAATACGACTCACTATAGGG"
+#' p3 <- "CCATGCATGCATGCATGCAT"
+#' sequences <- paste0(p5, c("ACGT", "TGCA"), p3)
+#' records <- as.vector(rbind(
+#'     paste0("@read_", seq_along(sequences)), sequences,
+#'     "+", strrep("I", nchar(sequences))
+#' ))
+#' path <- tempfile(fileext = ".fastq")
+#' writeLines(records, path)
 #' experiment <- run_selexprep_files(
-#'     c(round_00 = 'round_00.fastq.gz',
-#'       round_01 = 'round_01.fastq.gz')
+#'     path, round = 0, primer_5p = p5, primer_3p = p3,
+#'     extraction_mode = "BOTH_PRIMERS_SINGLE_READ", low_total_reads = 0
 #' )
-#' }
+#' S4Vectors::metadata(experiment)$qc$per_round
+#' unlink(path)
 run_selexprep_files <- function(x, round = NULL, mate = NULL, max_reads_per_file = NULL,
     ...) {
     inputs <- read_selexprep_inputs(x, round = round, mate = mate, max_reads_per_file = max_reads_per_file)

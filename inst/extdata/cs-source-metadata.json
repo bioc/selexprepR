@@ -1,0 +1,70 @@
+{
+  "record": "https://zenodo.org/records/14272647",
+  "doi": "10.5281/zenodo.14272647",
+  "retrieved": "2026-11-03",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "creator": "Zibin Zhao",
+  "creator_orcid": "0000-0002-3121-9131",
+  "data_collectors": [
+    "Zibin Zhao",
+    "Haosi Lin"
+  ],
+  "selection": "first 600 complete R1 FASTQ records in each source file, no filtering or sequence changes",
+  "source_integrity": "only HTTP 206 bytes 0-1048575 were retrieved; original full-file MD5 values are recorded, not locally verified",
+  "subsets": [
+    {
+      "round": 3,
+      "source_file": "3th-cs-LFL5718_L3_1.fq.gz",
+      "subset_file": "cs_round_03.fastq.gz",
+      "n_records": 600,
+      "uncompressed_sha256": "2495794d2167600782948aa77204ba6811ac9d0a601888f2dc6c18d34d8a77cc",
+      "sha256": "1a8725235b55866e40c178dfce7de82f521c76706a97916fc8cf244d871bb4f3",
+      "bytes": 26856,
+      "source_url": "https://zenodo.org/api/records/14272647/files/3th-cs-LFL5718_L3_1.fq.gz/content",
+      "source_bytes": 909798034,
+      "source_md5": "ce663275300a74b03b6d18d3aa90c487",
+      "prefix_bytes": 1048576,
+      "prefix_sha256": "682dceba3b8bd8adca2833d4487fbfa23605ae5357875fc7ec59338e0a47e1d6"
+    },
+    {
+      "round": 5,
+      "source_file": "5th-cs-LFL5722_L3_1.fq.gz",
+      "subset_file": "cs_round_05.fastq.gz",
+      "n_records": 600,
+      "uncompressed_sha256": "dcb6ccb137e62609dcdde10af18bfec94689d01841a07c3dc65cd6891dc72870",
+      "sha256": "b93a365fd5cd4e52e3311a7e66d246050a34cb6e5d47c9cd7c29dd025447cc29",
+      "bytes": 25009,
+      "source_url": "https://zenodo.org/api/records/14272647/files/5th-cs-LFL5722_L3_1.fq.gz/content",
+      "source_bytes": 872260986,
+      "source_md5": "e31888a485180c23e79cf99db8538fb6",
+      "prefix_bytes": 1048576,
+      "prefix_sha256": "b13bd73188b763d5151576b9e7f030de151279fe324c1c40cf2857692f2759e8"
+    },
+    {
+      "round": 7,
+      "source_file": "7th-cs-LFL5726_L3_1.fq.gz",
+      "subset_file": "cs_round_07.fastq.gz",
+      "n_records": 600,
+      "uncompressed_sha256": "ea42e43f9671ec7e63956cfa9056982b5f770e9ae4dbfad3991ef1a37cd00105",
+      "sha256": "daa8f6e8f3d76392605b2c90b88768295a0a4c09545a17b2ef69434300a83099",
+      "bytes": 22598,
+      "source_url": "https://zenodo.org/api/records/14272647/files/7th-cs-LFL5726_L3_1.fq.gz/content",
+      "source_bytes": 768565752,
+      "source_md5": "fe5dc9eb7158e56fe0b90c18b8f4efd4",
+      "prefix_bytes": 1048576,
+      "prefix_sha256": "b83ad35d3acebe899858db3a5cd62c4090ec08708c121942f03f98155dc741c8"
+    }
+  ],
+  "primer_provenance": {
+    "article_doi": "10.1093/bib/bbaf680",
+    "location": "Supplementary Table S8, e.g. AI-CSR3CC and AI-CSR5CC",
+    "supplement_url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC12713628.1/dl-selex-si-final_bbaf680.docx?md5=80fd8959e0d6d85f854e106a2929b698",
+    "supplement_md5": "80fd8959e0d6d85f854e106a2929b698",
+    "published_flank_5p": "GGCTCTCGGGACGAC",
+    "published_flank_3p": "CTGCGTTCTCCATTCTGG",
+    "example_read_orientation": "reverse complement of the aptamers printed in Table S8",
+    "example_primer_5p": "CCAGAATGGAGAACGCAG",
+    "example_primer_3p": "GTCGTCCCGAGAGCC"
+  }
+}

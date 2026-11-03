@@ -1,0 +1,40 @@
+Warning message:
+replacing previous import ‘S4Arrays::read_block’ by ‘DelayedArray::read_block’ when loading ‘SummarizedExperiment’
+PASS 1 empty pools
+PASS 2 empty round
+PASS 3 below detection floor
+PASS 4 both primers, numeric round order
+PASS 5 5-prime only
+PASS 6 3-prime only
+PASS 7 paired split
+PASS 8 subsample, exact RNG
+PASS 9 subsample paired, exact RNG
+PASS 10 adapter exclusion
+PASS 11 RNA lower case
+PASS 12 zero-width insert safe failure
+PASS 13 detection validation
+PASS 14 detection validation
+PASS 15 detection validation
+PASS 16 detection validation
+PASS 17 detection validation
+PASS 18 detection validation
+PASS 19 detection validation
+PASS 20 QC all summary types and report flags
+PASS 21 QC inferred report absent
+PASS 22 QC zero rows
+PASS 23 QC validation
+PASS 24 QC validation
+PASS 25 QC validation
+PASS 26 QC validation
+PASS 27 QC validation
+PASS 28 QC validation
+PASS 29 QC validation
+PASS 30 run complete workflow
+PASS 31 run paired full-insert refusal
+PASS 32 run manual overrides
+PASS 33 run demultiplex metadata
+PASS 34 run input layout protected
+PASS 35 run paired layout protected
+PASS 36 run invalid read source
+PASS 37 run file bundle and retention
+TOTAL 37 baseline/refactor comparisons passed; runtimes normalised only.

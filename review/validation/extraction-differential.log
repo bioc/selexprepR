@@ -1,0 +1,9 @@
+Warning message:
+replacing previous import ‘S4Arrays::read_block’ by ‘DelayedArray::read_block’ when loading ‘SummarizedExperiment’
+Reference: c2f7abdc07a12278bb2c459f064f119f0cb7f7e1
+PASS: 7,200 exact/approximate adapter coordinate comparisons.
+PASS: 7,200 per-read extraction results/masks across all single-read modes.
+PASS: 36 strand-distribution comparisons, including empty/short/shifted reads.
+PASS: 12 complete extraction-object comparisons, four modes/three orientations/three rounds, including an empty round.
+BENCHMARK scenario=exact unique_reads=3000 baseline_seconds=6.142 vector_seconds=0.790 speedup=7.77 baseline_reads_per_second=488.4 vector_reads_per_second=3797.5
+BENCHMARK scenario=20pct_substitution unique_reads=3000 baseline_seconds=6.032 vector_seconds=1.439 speedup=4.19 baseline_reads_per_second=497.3 vector_reads_per_second=2084.8

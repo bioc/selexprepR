@@ -25,8 +25,12 @@ If sample XML is unavailable, a warning accompanies fallback to text-field
 round inference. Filereport service-error bodies are retried before parsing.
 }
 \examples{
+# Inspect the bundled snapshot without a network connection.
+path <- system.file("extdata", "ena-inspection.rds", package = "selexprepR")
+inspection <- readRDS(path)
+inspection$runs[, c("run_accession", "library_strategy")]
+# A fresh inspection contacts ENA and requires network access.
 \donttest{
-inspection <- inspect_selexprep_accession('PRJDB19098')
-inspection$runs
+inspection <- inspect_selexprep_accession("PRJDB19098")
 }
 }

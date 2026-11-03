@@ -1,22 +1,3 @@
-.reverse_complement_read <- function(sequence) {
-    bases <- strsplit(sequence, "", fixed = TRUE)[[1L]]
-    complements <- c(A = "T", C = "G", G = "C", T = "A", U = "A", N = "N", a = "t",
-        c = "g", g = "c", t = "a", u = "a", n = "n")
-    paste0(vapply(rev(bases), function(base) {
-        complement <- complements[[base]]
-        if (is.null(complement))
-            "N" else complement
-    }, character(1)), collapse = "")
-}
-.has_hamming_prefix <- function(sequence, primer) {
-    sequence <- chartr("U", "T", toupper(sequence))
-    primer <- chartr("U", "T", toupper(primer))
-    nchar(sequence) >= nchar(primer) && .hamming_leq_one(substr(sequence, 1L, nchar(primer)),
-        primer)
-}
-.normalise_adapter_alphabet <- function(sequence) {
-    chartr("U", "T", toupper(sequence))
-}
 .adapter_match <- function(sequence, primer) {
     sequence <- .normalise_adapter_alphabet(sequence)
     primer <- .normalise_adapter_alphabet(primer)
@@ -37,44 +18,76 @@
     best <- order(-scores, errors, starts, -ends, method = "radix")[[1L]]
     c(start = starts[[best]], end = ends[[best]])
 }
-.after_adapter_match <- function(sequence, match) {
-    if (match[["end"]] >= nchar(sequence)) {
-        return("")
+# Exact matches have the maximum possible adapter score. Find those in one
+# native Biostrings call; only distinct residual reads need indel alignment.
+.adapter_matches <- function(sequences, primer) {
+    coordinates <- matrix(NA_integer_, nrow = length(sequences), ncol = 2L,
+        dimnames = list(NULL, c("start", "end")))
+    if (!length(sequences)) {
+        return(coordinates)
     }
-    substr(sequence, match[["end"]] + 1L, nchar(sequence))
-}
-.before_adapter_match <- function(sequence, match) {
-    if (match[["start"]] <= 1L) {
-        return("")
+    normalised <- .normalise_adapter_alphabet(sequences)
+    primer <- .normalise_adapter_alphabet(primer)
+    hits <- Biostrings::vmatchPattern(Biostrings::BString(primer),
+        Biostrings::BStringSet(normalised), fixed = TRUE)
+    counts <- S4Vectors::elementNROWS(hits)
+    matched <- counts > 0L
+    first <- cumsum(counts) - counts + 1L
+    starts <- unlist(Biostrings::start(hits), use.names = FALSE)
+    coordinates[matched, "start"] <- starts[first[matched]]
+    coordinates[matched, "end"] <- coordinates[matched, "start"] +
+        nchar(primer) - 1L
+    residual <- which(!matched)
+    if (length(residual)) {
+        coordinates[residual, ] <- .approximate_adapter_matches(
+            normalised[residual], primer)
     }
-    substr(sequence, 1L, match[["start"]] - 1L)
+    coordinates
 }
+
+.approximate_adapter_matches <- function(sequences, primer) {
+    distinct <- unique(sequences)
+    coordinates <- matrix(NA_integer_, nrow = length(distinct), ncol = 2L,
+        dimnames = list(NULL, c("start", "end")))
+    candidates <- Biostrings::vcountPattern(Biostrings::BString(primer),
+        Biostrings::BStringSet(distinct),
+        max.mismatch = floor(nchar(primer) * 0.1),
+        with.indels = TRUE, fixed = TRUE) > 0L
+    # Biostrings vectorizes indel-aware counts but not their coordinates.
+    # Resolve only matching, distinct residual reads with the original ranking.
+    if (any(candidates)) {
+        coordinates[candidates, ] <- t(vapply(distinct[candidates],
+            function(sequence) .adapter_match(sequence, primer), integer(2)))
+    }
+    coordinates[match(sequences, distinct), , drop = FALSE]
+}
+
+.trim_adapter <- function(sequences, primer, side) {
+    coordinates <- .adapter_matches(sequences, primer)
+    kept <- rep(NA_character_, length(sequences))
+    matched <- !is.na(coordinates[, "start"])
+    kept[matched] <- if (identical(side, "after")) {
+        substring(sequences[matched], coordinates[matched, "end"] + 1L)
+    } else {
+        substr(sequences[matched], 1L, coordinates[matched, "start"] - 1L)
+    }
+    kept
+}
+
 .trim_round <- function(sequences, mode, primer_5p, primer_3p,
     keep_mask = FALSE) {
-    kept <- switch(mode, BOTH_PRIMERS_SINGLE_READ = vapply(sequences, function(sequence) {
-        match_5p <- .adapter_match(sequence, primer_5p)
-        if (is.null(match_5p)) {
-            return(NA_character_)
-        }
-        remainder <- .after_adapter_match(sequence, match_5p)
-        match_3p <- .adapter_match(remainder, primer_3p)
-        if (is.null(match_3p)) {
-            return(NA_character_)
-        }
-        .before_adapter_match(remainder, match_3p)
-    }, character(1)), FIVE_PRIME_ONLY = vapply(sequences, function(sequence) {
-        match_5p <- .adapter_match(sequence, primer_5p)
-        if (is.null(match_5p)) {
-            return(NA_character_)
-        }
-        .after_adapter_match(sequence, match_5p)
-    }, character(1)), THREE_PRIME_ONLY = vapply(sequences, function(sequence) {
-        match_3p <- .adapter_match(sequence, primer_3p)
-        if (is.null(match_3p)) {
-            return(NA_character_)
-        }
-        .before_adapter_match(sequence, match_3p)
-    }, character(1)), stop("Unsupported single-read extraction mode.", call. = FALSE))
+    kept <- switch(mode,
+        BOTH_PRIMERS_SINGLE_READ = {
+            first <- .trim_adapter(sequences, primer_5p, "after")
+            matched <- !is.na(first)
+            first[matched] <- .trim_adapter(first[matched], primer_3p, "before")
+            first
+        },
+        FIVE_PRIME_ONLY = .trim_adapter(sequences, primer_5p, "after"),
+        THREE_PRIME_ONLY = .trim_adapter(sequences, primer_3p, "before"),
+        stop("Unsupported single-read extraction mode.", call. = FALSE)
+    )
+    names(kept) <- if (is.null(names(sequences))) sequences else names(sequences)
     keep <- !is.na(kept)
     result <- kept[keep]
     if (keep_mask) {
@@ -82,23 +95,29 @@
     }
     result
 }
+
+.prefix_matches <- function(sequences, primer) {
+    matched <- rep(FALSE, length(sequences))
+    if (is.null(primer)) {
+        return(matched)
+    }
+    sequences <- .normalise_adapter_alphabet(sequences)
+    primer <- .normalise_adapter_alphabet(primer)
+    long_enough <- nchar(sequences) >= nchar(primer)
+    matched[long_enough] <- as.vector(Biostrings::neditStartingAt(
+        Biostrings::BString(primer),
+        Biostrings::BStringSet(sequences[long_enough]),
+        starting.at = 1L, with.indels = FALSE, fixed = TRUE
+    )) <= 1L
+    matched
+}
+
 .strand_distribution <- function(sequences, primer_5p, primer_3p) {
-    reverse_3p <- if (is.null(primer_3p)) {
-        NULL
-    } else {
-        reverse_complement(primer_3p)
-    }
-    forward <- reverse <- ambiguous <- 0L
-    for (sequence in sequences) {
-        if (!is.null(primer_5p) && .has_hamming_prefix(sequence, primer_5p)) {
-            forward <- forward + 1L
-        } else if (!is.null(reverse_3p) && .has_hamming_prefix(sequence, reverse_3p)) {
-            reverse <- reverse + 1L
-        } else {
-            ambiguous <- ambiguous + 1L
-        }
-    }
-    c(forward = forward, reverse = reverse, ambiguous = ambiguous)
+    reverse_3p <- if (is.null(primer_3p)) NULL else reverse_complement(primer_3p)
+    forward <- .prefix_matches(sequences, primer_5p)
+    reverse <- !forward & .prefix_matches(sequences, reverse_3p)
+    c(forward = as.integer(sum(forward)), reverse = as.integer(sum(reverse)),
+        ambiguous = as.integer(sum(!forward & !reverse)))
 }
 .low_yield_rounds <- function(input_reads, output_reads, label = "round") {
     nonempty <- input_reads > 0
@@ -157,6 +176,44 @@
     toupper(primer)
 }
 
+.override_extraction_mode <- function(fields, extraction_mode) {
+    if (is.null(extraction_mode)) {
+        extraction_mode <- fields$extraction_mode
+        if (identical(extraction_mode, "UNABLE_TO_EXTRACT")) {
+            extraction_mode <- if (!is.null(fields$primer_5p) &&
+                !is.null(fields$primer_3p)) {
+                "BOTH_PRIMERS_SINGLE_READ"
+            } else if (!is.null(fields$primer_5p)) {
+                "FIVE_PRIME_ONLY"
+            } else if (!is.null(fields$primer_3p)) {
+                "THREE_PRIME_ONLY"
+            } else {
+                "UNABLE_TO_EXTRACT"
+            }
+        }
+    }
+    valid <- is.character(extraction_mode) && length(extraction_mode) == 1L &&
+        !is.na(extraction_mode) &&
+        extraction_mode %in% setdiff(.extraction_modes, "UNABLE_TO_EXTRACT")
+    if (!valid) {
+        stop("`extraction_mode` must name an extractable mode.", call. = FALSE)
+    }
+    extraction_mode
+}
+
+.validate_override_primers <- function(fields, extraction_mode) {
+    required <- switch(extraction_mode,
+        BOTH_PRIMERS_SINGLE_READ = c("primer_5p", "primer_3p"),
+        FIVE_PRIME_ONLY = "primer_5p",
+        THREE_PRIME_ONLY = "primer_3p",
+        PAIRED_END_SPLIT_PRIMERS = c("primer_5p", "primer_3p")
+    )
+    if (any(vapply(fields[required], is.null, logical(1)))) {
+        stop("The selected extraction mode requires additional primers.",
+            call. = FALSE)
+    }
+}
+
 .apply_primer_overrides <- function(report, primer_5p = NULL,
     primer_3p = NULL, extraction_mode = NULL) {
     requested <- !is.null(primer_5p) || !is.null(primer_3p) ||
@@ -175,52 +232,13 @@
         fields$primer_3p <- primer_3p
         fields$variants_3p <- list()
     }
-    if (is.null(extraction_mode)) {
-        extraction_mode <- fields$extraction_mode
-        if (identical(extraction_mode, "UNABLE_TO_EXTRACT")) {
-            extraction_mode <- if (!is.null(fields$primer_5p) &&
-                !is.null(fields$primer_3p)) {
-                "BOTH_PRIMERS_SINGLE_READ"
-            } else if (!is.null(fields$primer_5p)) {
-                "FIVE_PRIME_ONLY"
-            } else if (!is.null(fields$primer_3p)) {
-                "THREE_PRIME_ONLY"
-            } else {
-                "UNABLE_TO_EXTRACT"
-            }
-        }
-    }
-    valid_mode <- is.character(extraction_mode) &&
-        length(extraction_mode) == 1L && !is.na(extraction_mode) &&
-        extraction_mode %in% setdiff(.extraction_modes, "UNABLE_TO_EXTRACT")
-    if (!valid_mode) {
-        stop("`extraction_mode` must name an extractable mode.", call. = FALSE)
-    }
-    required <- switch(extraction_mode,
-        BOTH_PRIMERS_SINGLE_READ = c("primer_5p", "primer_3p"),
-        FIVE_PRIME_ONLY = "primer_5p",
-        THREE_PRIME_ONLY = "primer_3p",
-        PAIRED_END_SPLIT_PRIMERS = c("primer_5p", "primer_3p")
-    )
-    if (any(vapply(fields[required], is.null, logical(1)))) {
-        stop(
-            "The selected extraction mode requires additional primers.",
-            call. = FALSE
-        )
-    }
+    extraction_mode <- .override_extraction_mode(fields, extraction_mode)
+    .validate_override_primers(fields, extraction_mode)
     fields$extraction_mode <- extraction_mode
-    fields$full_insert_recovered <- identical(
-        extraction_mode,
-        "BOTH_PRIMERS_SINGLE_READ"
-    )
-    fields$required_action <- if (identical(
-        extraction_mode,
-        "PAIRED_END_SPLIT_PRIMERS"
-    )) {
-        "READ_MERGING_RECOMMENDED"
-    } else {
-        "NONE"
-    }
+    fields$full_insert_recovered <- identical(extraction_mode,
+        "BOTH_PRIMERS_SINGLE_READ")
+    fields$required_action <- if (identical(extraction_mode,
+        "PAIRED_END_SPLIT_PRIMERS")) "READ_MERGING_RECOMMENDED" else "NONE"
     fields$status <- "LOW"
     fields$confidence <- 0
     fields["failure_reason"] <- list(NULL)
@@ -280,98 +298,43 @@ selexprep_extract <- function(sequences_by_round, library_report,
     )
 }
 
-.extract_selexprep <- function(sequences_by_round, library_report,
-    paired_mate_streams = NULL, primer_5p = NULL, primer_3p = NULL,
-    extraction_mode = NULL, keep_masks = FALSE) {
-    if (!inherits(library_report, "selexprep_library_report")) {
+.validated_extraction_report <- function(report, primer_5p, primer_3p,
+    extraction_mode) {
+    if (!inherits(report, "selexprep_library_report")) {
         stop("`library_report` must be a selexprep_library_report.", call. = FALSE)
     }
-    library_report <- .apply_primer_overrides(
-        library_report,
-        primer_5p = primer_5p,
-        primer_3p = primer_3p,
-        extraction_mode = extraction_mode
-    )
-    if (identical(library_report$status, "UNABLE_TO_INFER") || identical(library_report$extraction_mode,
-        "UNABLE_TO_EXTRACT")) {
-        stop("LibraryReport does not permit extraction; provide explicit corrected primers.",
+    report <- .apply_primer_overrides(report, primer_5p, primer_3p,
+        extraction_mode)
+    if (identical(report$status, "UNABLE_TO_INFER") ||
+        identical(report$extraction_mode, "UNABLE_TO_EXTRACT")) {
+        stop(
+            "LibraryReport does not permit extraction; provide explicit corrected primers.",
+            call. = FALSE
+        )
+    }
+    report
+}
+
+.validate_single_primers <- function(report) {
+    mode <- report$extraction_mode
+    if (identical(mode, "BOTH_PRIMERS_SINGLE_READ") &&
+        (is.null(report$primer_5p) || is.null(report$primer_3p))) {
+        stop("Both-primer extraction requires both primer sequences.",
             call. = FALSE)
     }
-    pools <- .as_round_pools(sequences_by_round, "sequences_by_round")
-    mode <- library_report$extraction_mode
-    strand_distribution <- stats::setNames(lapply(pools, .strand_distribution,
-        primer_5p = library_report$primer_5p, primer_3p = library_report$primer_3p),
-        names(pools))
-    if (identical(library_report$orientation, "REVERSE")) {
-        pools <- lapply(pools, function(pool) {
-            vapply(pool, .reverse_complement_read, character(1))
-        })
-    }
-    if (identical(mode, "PAIRED_END_SPLIT_PRIMERS")) {
-        if (is.null(paired_mate_streams)) {
-            stop("PAIRED_END_SPLIT_PRIMERS extraction requires `paired_mate_streams`.",
-                call. = FALSE)
-        }
-        mate_pools <- .as_round_pools(paired_mate_streams, "paired_mate_streams")
-        if (!identical(names(pools), names(mate_pools))) {
-            stop("`paired_mate_streams` must have the same round names as `sequences_by_round`.",
-                call. = FALSE)
-        }
-        if (is.null(library_report$primer_5p) || is.null(library_report$primer_3p)) {
-            stop("Split-primer extraction requires both primer sequences.", call. = FALSE)
-        }
-        primer_r2 <- reverse_complement(library_report$primer_3p)
-        extracted <- lapply(names(pools), function(round_name) {
-            r1 <- pools[[round_name]]
-            r2 <- mate_pools[[round_name]]
-            if (length(r1) != length(r2)) {
-                stop(sprintf("Paired streams have different read counts in %s.",
-                  round_name), call. = FALSE)
-            }
-            trimmed_r1 <- rep(NA_character_, length(r1))
-            trimmed_r2 <- rep(NA_character_, length(r2))
-            for (index in seq_along(r1)) {
-                match_r1 <- .adapter_match(r1[[index]], library_report$primer_5p)
-                match_r2 <- .adapter_match(r2[[index]], primer_r2)
-                if (!is.null(match_r1) && !is.null(match_r2)) {
-                  trimmed_r1[[index]] <- .after_adapter_match(r1[[index]], match_r1)
-                  trimmed_r2[[index]] <- .after_adapter_match(r2[[index]], match_r2)
-                }
-            }
-            keep <- !is.na(trimmed_r1)
-            result <- list(r1 = Biostrings::BStringSet(unname(trimmed_r1[keep])),
-                r2 = Biostrings::BStringSet(unname(trimmed_r2[keep])))
-            if (keep_masks) {
-                attr(result, "kept") <- keep
-            }
-            result
-        })
-        names(extracted) <- names(pools)
-        kept_by_round <- NULL
-        if (keep_masks) {
-            kept_by_round <- lapply(extracted, attr, which = "kept")
-            extracted <- lapply(extracted, function(round) {
-                attr(round, "kept") <- NULL
-                round
-            })
-        }
-        input_reads <- vapply(pools, length, numeric(1))
-        output_reads <- vapply(extracted, function(round) length(round$r1), numeric(1))
-        return(.new_extraction(mode, FALSE, extracted, input_reads, output_reads,
-            strand_distribution, kept_by_round = kept_by_round))
-    }
-    if (identical(mode, "BOTH_PRIMERS_SINGLE_READ") && (is.null(library_report$primer_5p) ||
-        is.null(library_report$primer_3p))) {
-        stop("Both-primer extraction requires both primer sequences.", call. = FALSE)
-    }
-    if (identical(mode, "FIVE_PRIME_ONLY") && is.null(library_report$primer_5p)) {
+    if (identical(mode, "FIVE_PRIME_ONLY") && is.null(report$primer_5p)) {
         stop("Five-prime extraction requires a 5' primer.", call. = FALSE)
     }
-    if (identical(mode, "THREE_PRIME_ONLY") && is.null(library_report$primer_3p)) {
+    if (identical(mode, "THREE_PRIME_ONLY") && is.null(report$primer_3p)) {
         stop("Three-prime extraction requires a 3' primer.", call. = FALSE)
     }
-    extracted <- lapply(pools, .trim_round, mode = mode, primer_5p = library_report$primer_5p,
-        primer_3p = library_report$primer_3p, keep_mask = keep_masks)
+}
+
+.single_extraction <- function(pools, report, strand_distribution, keep_masks) {
+    .validate_single_primers(report)
+    extracted <- lapply(pools, .trim_round, mode = report$extraction_mode,
+        primer_5p = report$primer_5p, primer_3p = report$primer_3p,
+        keep_mask = keep_masks)
     kept_by_round <- if (keep_masks) {
         lapply(extracted, attr, which = "kept")
     } else {
@@ -380,7 +343,87 @@ selexprep_extract <- function(sequences_by_round, library_report,
     extracted <- lapply(extracted, function(sequences) {
         Biostrings::BStringSet(unname(sequences))
     })
-    .new_extraction(mode, library_report$full_insert_recovered, extracted, vapply(pools,
-        length, numeric(1)), vapply(extracted, length, numeric(1)), strand_distribution,
+    .new_extraction(report$extraction_mode, report$full_insert_recovered,
+        extracted, vapply(pools, length, numeric(1)),
+        vapply(extracted, length, numeric(1)), strand_distribution,
         kept_by_round = kept_by_round)
+}
+
+.validated_mate_pools <- function(pools, paired_mate_streams, report) {
+    if (is.null(paired_mate_streams)) {
+        stop("PAIRED_END_SPLIT_PRIMERS extraction requires `paired_mate_streams`.",
+            call. = FALSE)
+    }
+    mates <- .as_round_pools(paired_mate_streams, "paired_mate_streams")
+    if (!identical(names(pools), names(mates))) {
+        stop(
+            "`paired_mate_streams` must have the same round names as `sequences_by_round`.",
+            call. = FALSE
+        )
+    }
+    if (is.null(report$primer_5p) || is.null(report$primer_3p)) {
+        stop("Split-primer extraction requires both primer sequences.",
+            call. = FALSE)
+    }
+    sizes <- vapply(pools, length, integer(1))
+    mate_sizes <- vapply(mates, length, integer(1))
+    if (any(sizes != mate_sizes)) {
+        first <- names(pools)[which(sizes != mate_sizes)[[1L]]]
+        stop(sprintf("Paired streams have different read counts in %s.", first),
+            call. = FALSE)
+    }
+    mates
+}
+
+.trim_paired_round <- function(r1, r2, primer_5p, primer_r2, keep_mask) {
+    trimmed_r1 <- .trim_adapter(r1, primer_5p, "after")
+    trimmed_r2 <- .trim_adapter(r2, primer_r2, "after")
+    keep <- !is.na(trimmed_r1) & !is.na(trimmed_r2)
+    result <- list(r1 = Biostrings::BStringSet(unname(trimmed_r1[keep])),
+        r2 = Biostrings::BStringSet(unname(trimmed_r2[keep])))
+    if (keep_mask) {
+        attr(result, "kept") <- keep
+    }
+    result
+}
+
+.paired_extraction <- function(pools, mates, report, strand_distribution,
+    keep_masks) {
+    primer_r2 <- reverse_complement(report$primer_3p)
+    extracted <- Map(function(r1, r2) {
+        .trim_paired_round(r1, r2, report$primer_5p, primer_r2, keep_masks)
+    }, pools, mates)
+    kept_by_round <- NULL
+    if (keep_masks) {
+        kept_by_round <- lapply(extracted, attr, which = "kept")
+        extracted <- lapply(extracted, function(round) {
+            attr(round, "kept") <- NULL
+            round
+        })
+    }
+    .new_extraction(report$extraction_mode, FALSE, extracted,
+        vapply(pools, length, numeric(1)),
+        vapply(extracted, function(round) length(round$r1), numeric(1)),
+        strand_distribution, kept_by_round = kept_by_round)
+}
+
+.extract_selexprep <- function(sequences_by_round, library_report,
+    paired_mate_streams = NULL, primer_5p = NULL, primer_3p = NULL,
+    extraction_mode = NULL, keep_masks = FALSE) {
+    report <- .validated_extraction_report(library_report, primer_5p, primer_3p,
+        extraction_mode)
+    pools <- .as_round_pools(sequences_by_round, "sequences_by_round")
+    strand_distribution <- lapply(pools, .strand_distribution,
+        primer_5p = report$primer_5p, primer_3p = report$primer_3p)
+    if (identical(report$orientation, "REVERSE")) {
+        pools <- lapply(pools, function(pool) {
+            stats::setNames(reverse_complement(pool), pool)
+        })
+    }
+    if (identical(report$extraction_mode, "PAIRED_END_SPLIT_PRIMERS")) {
+        mates <- .validated_mate_pools(pools, paired_mate_streams, report)
+        return(.paired_extraction(pools, mates, report, strand_distribution,
+            keep_masks))
+    }
+    .single_extraction(pools, report, strand_distribution, keep_masks)
 }

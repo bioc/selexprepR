@@ -9,11 +9,18 @@ The snapshot was migrated byte-for-byte from Python selexprep v0.4.6
 verify its SHA-256, schema, identifiers, and statuses before rebuilding the
 `.rda` dataset.
 
-The package code is MIT-licensed. The catalog is factual public-record metadata;
-the underlying records and publications remain subject to their originating
-terms. See `inst/CATALOG_PROVENANCE.md` for sources, curation disclosure, and
+The catalog compilation and curation annotations are MIT-licensed, as in
+the pinned upstream selexprep source. The original MIT notice is retained in
+inst/licenses/selexprep-MIT.txt. Source records, papers and sequencing reads
+have separate terms; see inst/DATA_LICENSES.md. See `inst/CATALOG_PROVENANCE.md` for sources, curation disclosure, and
 immutable provenance links.
 
 This is a frozen discovery snapshot, not a live availability claim. Before
 downloading ENA data, use `inspect_selexprep_accession()` to obtain current
 records and verify that an accession is still available.
+
+`ena-inspection.rds` is a dated public metadata snapshot supporting offline
+examples. See inst/ENA_EXAMPLE_PROVENANCE.md for sources, checksum and terms.
+
+The cs_round_*.fastq.gz files are real CC BY 4.0 DL-SELEX R1 subsets. See
+inst/REAL_DATA_PROVENANCE.md for attribution, checksums and reconstruction.

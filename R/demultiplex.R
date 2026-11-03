@@ -18,7 +18,7 @@
             call. = FALSE
         )
     }
-    barcode_sequences <- toupper(chartr("U", "T", names(barcodes)))
+    barcode_sequences <- .normalise_adapter_alphabet(names(barcodes))
     widths <- nchar(barcode_sequences)
     if (length(unique(widths)) != 1L || any(widths == 0L) ||
         any(grepl("[^ACGT]", barcode_sequences))) {
@@ -27,20 +27,26 @@
             call. = FALSE
         )
     }
+    .validate_barcode_distance(barcode_sequences, names(barcodes), max_mismatches)
+    stats::setNames(as.integer(barcodes), barcode_sequences)
+}
+
+.validate_barcode_distance <- function(barcode_sequences, display_names,
+    max_mismatches) {
     minimum_distance <- 2L * as.integer(max_mismatches) + 1L
+    barcode_bases <- strsplit(barcode_sequences, "", fixed = TRUE)
     if (length(barcode_sequences) > 1L) {
         for (left in seq_len(length(barcode_sequences) - 1L)) {
             for (right in seq.int(left + 1L, length(barcode_sequences))) {
                 distance <- sum(
-                    strsplit(barcode_sequences[[left]], "")[[1L]] !=
-                        strsplit(barcode_sequences[[right]], "")[[1L]]
+                    barcode_bases[[left]] != barcode_bases[[right]]
                 )
                 if (distance < minimum_distance) {
                     stop(
                         sprintf(
                             "Barcodes %s and %s have distance %d; at least %d is required.",
-                            names(barcodes)[[left]],
-                            names(barcodes)[[right]],
+                            display_names[[left]],
+                            display_names[[right]],
                             distance,
                             minimum_distance
                         ),
@@ -50,19 +56,21 @@
             }
         }
     }
-    stats::setNames(as.integer(barcodes), barcode_sequences)
 }
 
 .demultiplex_assignments <- function(sequences, barcodes, max_mismatches) {
     barcode_width <- nchar(names(barcodes)[[1L]])
+    barcode_bases <- stats::setNames(
+        strsplit(names(barcodes), "", fixed = TRUE), names(barcodes)
+    )
     vapply(sequences, function(sequence) {
-        sequence <- toupper(chartr("U", "T", sequence))
+        sequence <- .normalise_adapter_alphabet(sequence)
         if (nchar(sequence) < barcode_width) {
             return(NA_integer_)
         }
         prefix <- strsplit(substr(sequence, 1L, barcode_width), "")[[1L]]
-        distances <- vapply(names(barcodes), function(barcode) {
-            sum(prefix != strsplit(barcode, "")[[1L]])
+        distances <- vapply(barcode_bases, function(barcode) {
+            sum(prefix != barcode)
         }, integer(1))
         matched <- which(distances <= max_mismatches)
         if (length(matched) == 1L) barcodes[[matched]] else NA_integer_
@@ -104,62 +112,24 @@
 selexprep_demultiplex <- function(sequences, barcodes, paired_mates = NULL,
     max_mismatches = 1L, trim_barcode = TRUE) {
     sequences <- .as_sequence_character(sequences)
-    if (!is.null(paired_mates)) {
-        paired_mates <- .as_sequence_character(paired_mates)
-        if (length(sequences) != length(paired_mates)) {
-            stop(
-                "`paired_mates` must contain one mate per R1 sequence.",
-                call. = FALSE
-            )
-        }
-    }
-    if (!is.logical(trim_barcode) || length(trim_barcode) != 1L ||
-        is.na(trim_barcode)) {
-        stop("`trim_barcode` must be one logical value.", call. = FALSE)
-    }
-    barcodes <- .validate_demultiplex_barcodes(
-        barcodes,
-        max_mismatches
+    paired_mates <- .prepare_demultiplex_mates(
+        sequences, paired_mates, trim_barcode
     )
+    barcodes <- .validate_demultiplex_barcodes(barcodes, max_mismatches)
     assignments <- .demultiplex_assignments(
-        sequences,
-        barcodes,
-        as.integer(max_mismatches)
+        sequences, barcodes, as.integer(max_mismatches)
     )
     rounds <- sort(unique(unname(barcodes)), method = "radix")
-    round_names <- sprintf("round_%02d", rounds)
-    barcode_width <- nchar(names(barcodes)[[1L]])
-    r1 <- lapply(rounds, function(round) {
-        selected <- sequences[!is.na(assignments) & assignments == round]
-        if (trim_barcode) {
-            selected <- substring(selected, barcode_width + 1L)
-        }
-        Biostrings::BStringSet(unname(selected))
-    })
-    names(r1) <- round_names
+    r1 <- .demultiplex_round_pools(
+        sequences, assignments, rounds,
+        trim_width = if (trim_barcode) nchar(names(barcodes)[[1L]]) else 0L
+    )
     r2 <- if (is.null(paired_mates)) {
         NULL
     } else {
-        pools <- lapply(rounds, function(round) {
-            keep <- !is.na(assignments) & assignments == round
-            Biostrings::BStringSet(unname(paired_mates[keep]))
-        })
-        stats::setNames(pools, round_names)
+        .demultiplex_round_pools(paired_mates, assignments, rounds)
     }
-    assigned <- vapply(rounds, function(round) {
-        sum(assignments == round, na.rm = TRUE)
-    }, integer(1))
-    total <- length(sequences)
-    summary <- S4Vectors::DataFrame(
-        round = round_names,
-        round_number = rounds,
-        assigned_reads = assigned,
-        assigned_fraction = if (total) {
-            assigned / total
-        } else {
-            numeric(length(rounds))
-        }
-    )
+    summary <- .demultiplex_summary(rounds, assignments, length(sequences))
     unassigned <- is.na(assignments)
     unassigned_reads <- list(
         r1 = Biostrings::BStringSet(unname(sequences[unassigned])),
@@ -170,18 +140,46 @@ selexprep_demultiplex <- function(sequences, barcodes, paired_mates = NULL,
         }
     )
     structure(list(
-        sequences_by_round = r1,
-        paired_mate_streams = r2,
+        sequences_by_round = r1, paired_mate_streams = r2,
         read_source = if (is.null(r2)) "R1" else "R1_AND_R2",
-        files = S4Vectors::DataFrame(),
-        unassigned = unassigned_reads,
-        summary = summary,
-        barcodes = barcodes,
-        max_mismatches = as.integer(max_mismatches),
-        trim_barcode = trim_barcode
-    ), class = c(
-        "selexprep_demultiplex",
-        "selexprep_read_inputs",
-        "list"
-    ))
+        files = S4Vectors::DataFrame(), unassigned = unassigned_reads,
+        summary = summary, barcodes = barcodes,
+        max_mismatches = as.integer(max_mismatches), trim_barcode = trim_barcode
+    ), class = c("selexprep_demultiplex", "selexprep_read_inputs", "list"))
+}
+
+.prepare_demultiplex_mates <- function(sequences, paired_mates, trim_barcode) {
+    if (!is.null(paired_mates)) {
+        paired_mates <- .as_sequence_character(paired_mates)
+        if (length(sequences) != length(paired_mates)) {
+            stop("`paired_mates` must contain one mate per R1 sequence.",
+                call. = FALSE)
+        }
+    }
+    if (!is.logical(trim_barcode) || length(trim_barcode) != 1L ||
+        is.na(trim_barcode)) {
+        stop("`trim_barcode` must be one logical value.", call. = FALSE)
+    }
+    paired_mates
+}
+
+.demultiplex_round_pools <- function(sequences, assignments, rounds,
+    trim_width = 0L) {
+    pools <- lapply(rounds, function(round) {
+        selected <- sequences[!is.na(assignments) & assignments == round]
+        if (trim_width) selected <- substring(selected, trim_width + 1L)
+        Biostrings::BStringSet(unname(selected))
+    })
+    stats::setNames(pools, sprintf("round_%02d", rounds))
+}
+
+.demultiplex_summary <- function(rounds, assignments, total) {
+    assigned <- vapply(rounds, function(round) {
+        sum(assignments == round, na.rm = TRUE)
+    }, integer(1))
+    S4Vectors::DataFrame(
+        round = sprintf("round_%02d", rounds), round_number = rounds,
+        assigned_reads = assigned,
+        assigned_fraction = if (total) assigned / total else numeric(length(rounds))
+    )
 }

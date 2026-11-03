@@ -25,8 +25,32 @@ verified, or supplied by one extraction arm. The 47 adjudicated cells have a
 single resolved flat value; the canonical JSON preserves both extraction arms,
 the resolution rationale, and record-level evidence sources and locations.
 
-The package code is distributed under the MIT license. Catalog values are
-factual metadata assembled from public repository records and cited studies;
-users should consult the terms of the originating record or publication before
-redistributing source material. Inclusion in this snapshot does not assert
-that the corresponding reads remain available.
+## Redistribution terms
+
+The catalog compilation and curation annotations are distributed under the
+MIT license of the upstream selexprep repository, copyright 2026 Marco Rota
+Negroni. The full upstream notice is retained in `licenses/selexprep-MIT.txt`;
+the immutable source license is
+<https://github.com/marcorotanegroni/selexprep/blob/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/LICENSE>.
+This applies to both the CSV and the R DataFrame derived from it.
+
+The flat catalog contains identifiers, study titles and short factual
+summaries of experimental parameters. It does not bundle source articles,
+figures, full text, supporting-information files, evidence quotations, or
+sequencing reads. Source metadata policies and the separate terms applying
+to downloaded source materials are listed in `DATA_LICENSES.md`.
+
+## Human spot checks
+
+On 2026-11-03 the maintainer reported having manually checked five randomly
+selected records against the original sources, finding no discrepancies in
+the fields checked. The record identifiers and checked fields were not
+recorded in this package. This is a limited spot check, not validation of all
+240 records. The original curation statuses are preserved.
+
+A further reproducible sample of ten records was drawn on 2026-11-03 for
+manual checking. The sample, source locations and pending result fields are
+in the source repository's `review/` directory. Its human results are pending;
+AI cross-checks and software regression tests are not counted as human review.
+
+Inclusion in the frozen catalog does not assert current read availability.

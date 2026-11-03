@@ -38,6 +38,10 @@
         stop("`full_insert_recovered` must be one non-missing logical value.",
             call. = FALSE)
     }
+    .validate_library_measurements(fields)
+    structure(fields, class = c("selexprep_library_report", "list"))
+}
+.validate_library_measurements <- function(fields) {
     numeric_fields <- c("n_length_confidence", "match_rate_5p", "match_rate_3p",
         "position_consistency_5p", "position_consistency_3p", "read_fraction_used_for_inference",
         "sampling_seed", "confidence")
@@ -61,7 +65,6 @@
     if (!is.list(fields$variants_5p) || !is.list(fields$variants_3p)) {
         stop("LibraryReport variants must be lists.", call. = FALSE)
     }
-    structure(fields, class = c("selexprep_library_report", "list"))
 }
 .unable_library_report <- function(read_source, sampling_seed, failure_reason,
     known_adapter_hits = numeric()) {
@@ -228,6 +231,43 @@
 .shared_library_constant <- function(flank, pools, is_prefix) {
     # Preserve the inner 12 nt and therefore the insert boundary. Only the
     # outer edge may lose sequence that is not shared by anchored rounds.
+    parts <- .constant_flank_parts(flank, is_prefix)
+    unchanged <- list(constant = flank, offsets = rep(0L, length(pools)))
+    kept <- parts$outer_width
+    core_positions <- rep(NA_integer_, length(pools))
+    for (round_index in seq_along(pools)) {
+        pool <- pools[[round_index]]
+        positions <- .core_anchor_positions(
+            pool, parts$core, is_prefix, nchar(flank) + 12L
+        )
+        usable <- !is.na(positions)
+        anchored <- sum(usable)
+        if (!length(pool) || anchored < 0.5 * length(pool)) {
+            if (round_index == 1L) return(unchanged)
+            next
+        }
+        positions <- positions[usable]
+        core_positions[[round_index]] <- .first_mode(positions)$value
+        segments <- .constant_outer_segments(
+            pool[usable], positions, parts$outer_width, is_prefix
+        )
+        kept <- .shared_outer_bases(
+            segments, parts$outer, min(kept, parts$outer_width), anchored
+        )
+    }
+    constant <- if (is_prefix) {
+        substr(flank, nchar(flank) - parts$core_length - kept + 1L, nchar(flank))
+    } else {
+        substr(flank, 1L, parts$core_length + kept)
+    }
+    # Do not shift the boundary to an ambiguous outer copy of the constant.
+    if (.sequence_occurrences(flank, constant) > 1L) {
+        return(unchanged)
+    }
+    list(constant = constant, offsets = core_positions - kept)
+}
+
+.constant_flank_parts <- function(flank, is_prefix) {
     core_length <- min(12L, nchar(flank))
     outer_width <- nchar(flank) - core_length
     core <- if (is_prefix) {
@@ -241,79 +281,61 @@
         strsplit(substr(flank, core_length + 1L, nchar(flank)), "",
             fixed = TRUE)[[1L]]
     }
-    unchanged <- list(constant = flank, offsets = rep(0L, length(pools)))
-    kept <- outer_width
-    core_positions <- rep(NA_integer_, length(pools))
-    for (round_index in seq_along(pools)) {
-        pool <- pools[[round_index]]
-        copies <- lapply(pool, .core_places, core = core,
-            is_prefix = is_prefix, window = nchar(flank) + 12L)
-        single <- unlist(copies[lengths(copies) == 1L], use.names = FALSE)
-        agreed <- NULL
-        if (length(single)) {
-            mode <- .first_mode(single)
-            if (mode$count >= 0.8 * length(single)) {
-                agreed <- mode$value
-            }
-        }
-        positions <- vapply(copies, function(places) {
-            if (length(places) == 1L) {
-                places[[1L]]
-            } else if (!is.null(agreed) && agreed %in% places) {
-                agreed
-            } else {
-                NA_integer_
-            }
-        }, integer(1))
-        usable <- !is.na(positions)
-        anchored <- sum(usable)
-        if (!length(pool) || anchored < 0.5 * length(pool)) {
-            if (round_index == 1L) {
-                return(unchanged)
-            }
-            next
-        }
-        positions <- positions[usable]
-        core_positions[[round_index]] <- .first_mode(positions)$value
-        if (is_prefix) {
-            segments <- substr(pool[usable], pmax(1L, positions - outer_width + 1L),
-                positions)
-            segments <- vapply(strsplit(segments, "", fixed = TRUE), function(x) {
-                paste0(rev(x), collapse = "")
-            }, character(1))
-        } else {
-            ends <- nchar(pool[usable]) - positions
-            segments <- substr(pool[usable], ends + 1L, ends + outer_width)
-        }
-        shared <- 0L
-        for (position in seq_len(min(kept, outer_width))) {
-            bases <- substr(segments, position, position)
-            covered <- sum(nzchar(bases) & bases != ".")
-            if (covered < 0.5 * anchored) {
-                break
-            }
-            counts <- tabulate(match(bases, c("A", "C", "G", "T")), nbins = 4L)
-            base <- which.max(counts)
-            if (c("A", "C", "G", "T")[[base]] != outer[[position]] ||
-                counts[[base]] < 0.55 * covered) {
-                break
-            }
-            shared <- shared + 1L
-        }
-        kept <- shared
-    }
-    constant <- if (is_prefix) {
-        substr(flank, nchar(flank) - core_length - kept + 1L, nchar(flank))
-    } else {
-        substr(flank, 1L, core_length + kept)
-    }
-    # An ambiguous shorter constant could make extraction choose the outer
-    # copy and move the insert boundary. Preserve the full flank in that case.
-    if (.sequence_occurrences(flank, constant) > 1L) {
-        return(unchanged)
-    }
-    list(constant = constant, offsets = core_positions - kept)
+    list(core = core, outer = outer, core_length = core_length,
+        outer_width = outer_width)
 }
+
+.core_anchor_positions <- function(pool, core, is_prefix, window) {
+    copies <- lapply(pool, .core_places, core = core,
+        is_prefix = is_prefix, window = window)
+    single <- unlist(copies[lengths(copies) == 1L], use.names = FALSE)
+    agreed <- NULL
+    if (length(single)) {
+        mode <- .first_mode(single)
+        if (mode$count >= 0.8 * length(single)) {
+            agreed <- mode$value
+        }
+    }
+    vapply(copies, function(places) {
+        if (length(places) == 1L) {
+            places[[1L]]
+        } else if (!is.null(agreed) && agreed %in% places) {
+            agreed
+        } else {
+            NA_integer_
+        }
+    }, integer(1))
+}
+
+.constant_outer_segments <- function(sequences, positions, outer_width,
+    is_prefix) {
+    if (is_prefix) {
+        segments <- substr(sequences, pmax(1L, positions - outer_width + 1L),
+            positions)
+        vapply(strsplit(segments, "", fixed = TRUE), function(bases) {
+            paste0(rev(bases), collapse = "")
+        }, character(1))
+    } else {
+        ends <- nchar(sequences) - positions
+        substr(sequences, ends + 1L, ends + outer_width)
+    }
+}
+
+.shared_outer_bases <- function(segments, outer, max_width, anchored) {
+    shared <- 0L
+    for (position in seq_len(max_width)) {
+        bases <- substr(segments, position, position)
+        covered <- sum(nzchar(bases) & bases != ".")
+        if (covered < 0.5 * anchored) break
+        counts <- tabulate(match(bases, c("A", "C", "G", "T")), nbins = 4L)
+        base <- which.max(counts)
+        if (c("A", "C", "G", "T")[[base]] != outer[[position]] ||
+            counts[[base]] < 0.55 * covered) break
+        shared <- shared + 1L
+    }
+    shared
+}
+
 .detect_primers <- function(sequences, confidence = 0.75, max_length = 60L, min_length = 14L,
     min_sequences = 500L) {
     if (length(sequences) < min_sequences) {
@@ -664,188 +686,271 @@
 #' inserts <- c('ACGTACGTACGTACGT', 'TGCATGCATGCATGCA')
 #' reads <- rep(paste0(p5, inserts, p3), each = 250)
 #' selexprep_detect(list(round_00 = reads))
-selexprep_detect <- function(sequences_by_round, read_source = c("R1", "R2", "R1_AND_R2",
-    "INTERLEAVED", "UNKNOWN"), paired_mate_streams = NULL, sampling_seed = 42L,
+selexprep_detect <- function(sequences_by_round,
+    read_source = c("R1", "R2", "R1_AND_R2", "INTERLEAVED", "UNKNOWN"),
+    paired_mate_streams = NULL, sampling_seed = 42L,
     max_reads_per_round = NULL) {
     read_source <- match.arg(read_source)
-    if (!is.numeric(sampling_seed) || length(sampling_seed) != 1L || is.na(sampling_seed)) {
-        stop("`sampling_seed` must be one non-missing number.", call. = FALSE)
-    }
-    if (!is.null(max_reads_per_round) && (!is.numeric(max_reads_per_round) || length(max_reads_per_round) !=
-        1L || is.na(max_reads_per_round))) {
-        stop("`max_reads_per_round` must be NULL or one non-missing number.", call. = FALSE)
-    }
+    .validate_detection_parameters(sampling_seed, max_reads_per_round)
     pools <- .as_round_pools(sequences_by_round, "sequences_by_round")
     if (!length(pools)) {
-        return(.unable_library_report(read_source, sampling_seed, "No sequences provided"))
+        return(.unable_library_report(
+            read_source, sampling_seed, "No sequences provided"
+        ))
     }
-    mate_pools <- if (is.null(paired_mate_streams))
-        NULL else {
+    mates <- if (is.null(paired_mate_streams)) {
+        NULL
+    } else {
         .as_round_pools(paired_mate_streams, "paired_mate_streams")
     }
-    if (!is.null(mate_pools) && !identical(names(mate_pools), names(pools))) {
-        stop("`paired_mate_streams` must have the same round names as `sequences_by_round`.",
-            call. = FALSE)
+    if (!is.null(mates) && !identical(names(mates), names(pools))) {
+        stop(sprintf(
+            "%s %s", "`paired_mate_streams` must have the same round names",
+            "as `sequences_by_round`."
+        ), call. = FALSE)
     }
     .with_sampling_seed(sampling_seed, {
-        sampled_pools <- lapply(pools, function(pool) {
-            .subsample_pool(.normalise_pool(pool), max_reads_per_round)
-        })
-        fractions <- vapply(sampled_pools, `[[`, numeric(1), "fraction")
-        normalised <- lapply(sampled_pools, `[[`, "sequences")
-        names(normalised) <- names(pools)
-        earliest_name <- names(normalised)[[1L]]
-        earliest_sequences <- normalised[[earliest_name]]
-        adapter_hits <- .count_adapter_hits(earliest_sequences)
-        detection <- .detect_primers(earliest_sequences)
-        if (is.null(detection)) {
-            failure_reason <- paste(
-                "Earliest round has fewer than 500 sequences",
-                "\u2014 below detection floor"
-            )
-            return(.unable_library_report(
-                read_source,
-                sampling_seed,
-                failure_reason,
-                adapter_hits
-            ))
-        }
-        primer_5p <- detection$primer_5p$sequence
-        primer_3p <- detection$primer_3p$sequence
-        adapter_drop_5p <- .matches_known_adapter_prefix(primer_5p)
-        adapter_drop_3p <- .matches_known_adapter_prefix(primer_3p)
-        if (adapter_drop_5p)
-            primer_5p <- NULL
-        if (adapter_drop_3p)
-            primer_3p <- NULL
-        has_paired_split <- FALSE
-        threep_sequences <- normalised
-        threep_is_prefix <- FALSE
-        primer_3p_lookup <- primer_3p
-        if (!is.null(mate_pools)) {
-            normalised_mates <- lapply(mate_pools, function(pool) {
-                .subsample_pool(.normalise_pool(pool), max_reads_per_round)$sequences
-            })
-            split <- .paired_split_signal(earliest_sequences, normalised_mates[[earliest_name]])
-            has_paired_split <- split$has_paired_split
-            if (has_paired_split) {
-                primer_3p <- split$primer_3p
-                primer_3p_lookup <- reverse_complement(primer_3p)
-                threep_sequences <- normalised_mates
-                threep_is_prefix <- TRUE
-            }
-        }
-        full_flank_5p <- primer_5p
-        full_flank_3p <- primer_3p
-        offsets_5p <- offsets_3p <- rep(0L, length(normalised))
-        if (!is.null(primer_5p)) {
-            shared <- .shared_library_constant(primer_5p, normalised, TRUE)
-            primer_5p <- shared$constant
-            offsets_5p <- shared$offsets
-        }
-        if (!is.null(primer_3p_lookup)) {
-            shared <- .shared_library_constant(primer_3p_lookup,
-                threep_sequences, threep_is_prefix)
-            primer_3p_lookup <- shared$constant
-            offsets_3p <- shared$offsets
-            primer_3p <- if (has_paired_split) {
-                reverse_complement(primer_3p_lookup)
-            } else {
-                primer_3p_lookup
-            }
-        }
-        # A round without enough exact-core anchors uses the earliest round's
-        # position for persistence; it did not vote on the shared constant.
-        at_offset <- function(offsets, index) {
-            if (!is.na(offsets[[index]])) {
-                offsets[[index]]
-            } else if (!is.na(offsets[[1L]])) {
-                offsets[[1L]]
-            } else {
-                0L
-            }
-        }
-        position_rates_5p <- vapply(seq_along(normalised), function(index) {
-            .position_consistency(normalised[[index]], primer_5p, TRUE,
-                offset = at_offset(offsets_5p, index))
-        }, numeric(1))
-        position_rates_3p <- vapply(seq_along(threep_sequences), function(index) {
-            .position_consistency(threep_sequences[[index]], primer_3p_lookup,
-                threep_is_prefix, offset = at_offset(offsets_3p, index))
-        }, numeric(1))
-        persistence <- .combine_persistence(.persistence_score(position_rates_5p),
-            .persistence_score(position_rates_3p), primer_5p, primer_3p)
-        earliest_threep <- threep_sequences[[earliest_name]]
-        match_rate_5p <- .substring_match_rate(earliest_sequences, primer_5p)
-        match_rate_3p <- .substring_match_rate(earliest_threep, primer_3p_lookup)
-        if (match_rate_5p <= 0.7 && !is.null(primer_5p) &&
-            identical(primer_5p, detection$primer_5p$sequence)) {
-            core <- .high_support_core(primer_5p, detection$primer_5p$supports,
-                is_prefix = TRUE)
-            if (!is.null(core)) {
-                match_rate_5p <- max(match_rate_5p,
-                    .substring_match_rate(earliest_sequences, core))
-            }
-        }
-        if (!has_paired_split && match_rate_3p <= 0.7 &&
-            !is.null(primer_3p_lookup) &&
-            identical(primer_3p_lookup, detection$primer_3p$sequence)) {
-            core <- .high_support_core(primer_3p_lookup,
-                detection$primer_3p$supports, is_prefix = FALSE)
-            if (!is.null(core)) {
-                match_rate_3p <- max(match_rate_3p,
-                    .substring_match_rate(earliest_threep, core))
-            }
-        }
-        p5_length <- if (is.null(primer_5p))
-            0L else nchar(primer_5p)
-        p3_lookup_length <- if (is.null(primer_3p_lookup))
-            0L else nchar(primer_3p_lookup)
-        variants_5p <- .top_variants(earliest_sequences, p5_length, TRUE,
-            offset = at_offset(offsets_5p, 1L))
-        variants_3p <- .top_variants(earliest_threep, p3_lookup_length, threep_is_prefix,
-            offset = at_offset(offsets_3p, 1L))
-        n_lengths <- if (has_paired_split) {
-            list(mode = NULL, distribution = numeric(), confidence = 0)
-        } else {
-            .n_length_stats(earliest_sequences,
-                if (is.null(full_flank_5p)) 0L else nchar(full_flank_5p),
-                if (is.null(full_flank_3p)) 0L else nchar(full_flank_3p))
-        }
-        if (!is.null(n_lengths$mode) && n_lengths$mode == 0) {
-            return(.unable_library_report(
-                read_source,
-                sampling_seed,
-                paste(
-                    "Inferred random-region length is 0 nt: the flanks meet,",
-                    "so no constant/random boundary can be identified.",
-                    "If this is a SELEX library, supply reviewed primer_5p",
-                    "and primer_3p overrides to selexprep_extract()."
-                ),
-                adapter_hits
-            ))
-        }
-        has_round_map <- length(normalised) >= 2L
-        confidence <- .composite_confidence(list(match_5p = match_rate_5p, match_3p = match_rate_3p,
-            pos_5p = position_rates_5p[[1L]], pos_3p = position_rates_3p[[1L]],
-            persistence = persistence, n_length = n_lengths$confidence, adapter_clean = if (adapter_drop_5p ||
-                adapter_drop_3p) 0 else 1), has_round_map)
-        classification <- .classify_library(match_rate_5p, match_rate_3p, n_lengths$confidence,
-            has_paired_split, has_round_map, confidence)
-        .new_library_report(list(primer_5p = primer_5p, primer_3p = primer_3p,
-            variants_5p = variants_5p, variants_3p = variants_3p, known_adapter_hits = adapter_hits,
-            extraction_mode = classification$extraction_mode, full_insert_recovered = classification$full_insert_recovered,
-            read_source = read_source, required_action = classification$required_action,
-            orientation = .detect_orientation(earliest_sequences,
-                full_flank_5p, full_flank_3p),
-            n_length_mode = n_lengths$mode, n_length_distribution = n_lengths$distribution,
-            n_length_confidence = n_lengths$confidence, match_rate_5p = match_rate_5p,
-            match_rate_3p = match_rate_3p, position_consistency_5p = position_rates_5p[[1L]],
-            position_consistency_3p = position_rates_3p[[1L]], read_fraction_used_for_inference = mean(fractions),
-            sampling_seed = as.numeric(sampling_seed), confidence = confidence,
-            status = classification$status, failure_reason = classification$failure_reason))
+        sampled <- .sample_detection_pools(pools, max_reads_per_round)
+        .detect_sampled_library(
+            sampled, mates, read_source, sampling_seed, max_reads_per_round
+        )
     })
 }
+
+.validate_detection_parameters <- function(seed, max_reads) {
+    if (!is.numeric(seed) || length(seed) != 1L || is.na(seed)) {
+        stop("`sampling_seed` must be one non-missing number.", call. = FALSE)
+    }
+    if (!is.null(max_reads) && (!is.numeric(max_reads) ||
+        length(max_reads) != 1L || is.na(max_reads))) {
+        stop(
+            "`max_reads_per_round` must be NULL or one non-missing number.",
+            call. = FALSE
+        )
+    }
+}
+
+.sample_detection_pools <- function(pools, max_reads) {
+    sampled <- lapply(pools, function(pool) {
+        .subsample_pool(.normalise_pool(pool), max_reads)
+    })
+    list(
+        sequences = lapply(sampled, `[[`, "sequences"),
+        fractions = vapply(sampled, `[[`, numeric(1), "fraction")
+    )
+}
+
+.initial_library_layout <- function(detection, pools, mates, max_reads) {
+    primer_5p <- detection$primer_5p$sequence
+    primer_3p <- detection$primer_3p$sequence
+    drop_5p <- .matches_known_adapter_prefix(primer_5p)
+    drop_3p <- .matches_known_adapter_prefix(primer_3p)
+    if (drop_5p) primer_5p <- NULL
+    if (drop_3p) primer_3p <- NULL
+    threep_pools <- pools
+    has_split <- FALSE
+    if (!is.null(mates)) {
+        sampled_mates <- .sample_detection_pools(mates, max_reads)$sequences
+        earliest <- names(pools)[[1L]]
+        split <- .paired_split_signal(
+            pools[[earliest]], sampled_mates[[earliest]]
+        )
+        has_split <- split$has_paired_split
+        if (has_split) {
+            primer_3p <- split$primer_3p
+            threep_pools <- sampled_mates
+        }
+    }
+    list(
+        primer_5p = primer_5p, primer_3p = primer_3p,
+        primer_3p_lookup = if (has_split) {
+            reverse_complement(primer_3p)
+        } else {
+            primer_3p
+        },
+        full_flank_5p = primer_5p, full_flank_3p = primer_3p,
+        has_paired_split = has_split, threep_is_prefix = has_split,
+        threep_pools = threep_pools, adapter_drop = drop_5p || drop_3p
+    )
+}
+
+.shared_detection_flanks <- function(layout, pools) {
+    layout$offsets_5p <- layout$offsets_3p <- rep(0L, length(pools))
+    if (!is.null(layout$primer_5p)) {
+        shared <- .shared_library_constant(layout$primer_5p, pools, TRUE)
+        layout$primer_5p <- shared$constant
+        layout$offsets_5p <- shared$offsets
+    }
+    if (!is.null(layout$primer_3p_lookup)) {
+        shared <- .shared_library_constant(
+            layout$primer_3p_lookup, layout$threep_pools,
+            layout$threep_is_prefix
+        )
+        layout$primer_3p_lookup <- shared$constant
+        layout$offsets_3p <- shared$offsets
+        layout$primer_3p <- if (layout$has_paired_split) {
+            reverse_complement(layout$primer_3p_lookup)
+        } else {
+            layout$primer_3p_lookup
+        }
+    }
+    layout
+}
+
+# A round without enough anchors uses the earliest round's position for
+# persistence, but did not vote on the shared constant.
+.detection_offset <- function(offsets, index) {
+    if (!is.na(offsets[[index]])) {
+        offsets[[index]]
+    } else if (!is.na(offsets[[1L]])) {
+        offsets[[1L]]
+    } else {
+        0L
+    }
+}
+
+.detection_position_rates <- function(pools, primer, is_prefix, offsets) {
+    vapply(seq_along(pools), function(index) {
+        .position_consistency(
+            pools[[index]], primer, is_prefix,
+            offset = .detection_offset(offsets, index)
+        )
+    }, numeric(1))
+}
+
+.detection_match_rate <- function(sequences, primer, flank, is_prefix,
+    allow_core = TRUE) {
+    rate <- .substring_match_rate(sequences, primer)
+    if (allow_core && rate <= 0.7 && !is.null(primer) &&
+        identical(primer, flank$sequence)) {
+        core <- .high_support_core(primer, flank$supports, is_prefix)
+        if (!is.null(core)) {
+            rate <- max(rate, .substring_match_rate(sequences, core))
+        }
+    }
+    rate
+}
+
+.detection_insert_lengths <- function(layout, earliest) {
+    if (layout$has_paired_split) {
+        return(list(mode = NULL, distribution = numeric(), confidence = 0))
+    }
+    .n_length_stats(
+        earliest,
+        if (is.null(layout$full_flank_5p)) 0L else nchar(layout$full_flank_5p),
+        if (is.null(layout$full_flank_3p)) 0L else nchar(layout$full_flank_3p)
+    )
+}
+
+.library_detection_evidence <- function(layout, pools, detection) {
+    earliest <- pools[[1L]]
+    earliest_threep <- layout$threep_pools[[1L]]
+    positions_5p <- .detection_position_rates(
+        pools, layout$primer_5p, TRUE, layout$offsets_5p
+    )
+    positions_3p <- .detection_position_rates(
+        layout$threep_pools, layout$primer_3p_lookup,
+        layout$threep_is_prefix, layout$offsets_3p
+    )
+    list(
+        position_5p = positions_5p, position_3p = positions_3p,
+        persistence = .combine_persistence(
+            .persistence_score(positions_5p), .persistence_score(positions_3p),
+            layout$primer_5p, layout$primer_3p
+        ),
+        match_5p = .detection_match_rate(
+            earliest, layout$primer_5p, detection$primer_5p, TRUE
+        ),
+        match_3p = .detection_match_rate(
+            earliest_threep, layout$primer_3p_lookup, detection$primer_3p,
+            FALSE, allow_core = !layout$has_paired_split
+        ),
+        variants_5p = .top_variants(
+            earliest, if (is.null(layout$primer_5p)) 0L else {
+                nchar(layout$primer_5p)
+            }, TRUE, offset = .detection_offset(layout$offsets_5p, 1L)
+        ),
+        variants_3p = .top_variants(
+            earliest_threep, if (is.null(layout$primer_3p_lookup)) 0L else {
+                nchar(layout$primer_3p_lookup)
+            }, layout$threep_is_prefix,
+            offset = .detection_offset(layout$offsets_3p, 1L)
+        ),
+        n_lengths = .detection_insert_lengths(layout, earliest)
+    )
+}
+
+.detected_library_report <- function(layout, evidence, sampled, adapter_hits,
+    read_source, seed) {
+    lengths <- evidence$n_lengths
+    has_round_map <- length(sampled$sequences) >= 2L
+    confidence <- .composite_confidence(list(
+        match_5p = evidence$match_5p, match_3p = evidence$match_3p,
+        pos_5p = evidence$position_5p[[1L]],
+        pos_3p = evidence$position_3p[[1L]],
+        persistence = evidence$persistence, n_length = lengths$confidence,
+        adapter_clean = if (layout$adapter_drop) 0 else 1
+    ), has_round_map)
+    classification <- .classify_library(
+        evidence$match_5p, evidence$match_3p, lengths$confidence,
+        layout$has_paired_split, has_round_map, confidence
+    )
+    .new_library_report(list(
+        primer_5p = layout$primer_5p, primer_3p = layout$primer_3p,
+        variants_5p = evidence$variants_5p, variants_3p = evidence$variants_3p,
+        known_adapter_hits = adapter_hits,
+        extraction_mode = classification$extraction_mode,
+        full_insert_recovered = classification$full_insert_recovered,
+        read_source = read_source,
+        required_action = classification$required_action,
+        orientation = .detect_orientation(
+            sampled$sequences[[1L]], layout$full_flank_5p, layout$full_flank_3p
+        ),
+        n_length_mode = lengths$mode,
+        n_length_distribution = lengths$distribution,
+        n_length_confidence = lengths$confidence,
+        match_rate_5p = evidence$match_5p, match_rate_3p = evidence$match_3p,
+        position_consistency_5p = evidence$position_5p[[1L]],
+        position_consistency_3p = evidence$position_3p[[1L]],
+        read_fraction_used_for_inference = mean(sampled$fractions),
+        sampling_seed = as.numeric(seed), confidence = confidence,
+        status = classification$status,
+        failure_reason = classification$failure_reason
+    ))
+}
+
+.detect_sampled_library <- function(sampled, mates, read_source, seed,
+    max_reads) {
+    pools <- sampled$sequences
+    adapter_hits <- .count_adapter_hits(pools[[1L]])
+    detection <- .detect_primers(pools[[1L]])
+    if (is.null(detection)) {
+        return(.unable_library_report(
+            read_source, seed,
+            paste("Earliest round has fewer than 500 sequences",
+                "\u2014 below detection floor"),
+            adapter_hits
+        ))
+    }
+    layout <- .initial_library_layout(detection, pools, mates, max_reads)
+    layout <- .shared_detection_flanks(layout, pools)
+    evidence <- .library_detection_evidence(layout, pools, detection)
+    if (!is.null(evidence$n_lengths$mode) && evidence$n_lengths$mode == 0) {
+        return(.unable_library_report(
+            read_source, seed,
+            paste(
+                "Inferred random-region length is 0 nt: the flanks meet,",
+                "so no constant/random boundary can be identified.",
+                "If this is a SELEX library, supply reviewed primer_5p",
+                "and primer_3p overrides to selexprep_extract()."
+            ), adapter_hits
+        ))
+    }
+    .detected_library_report(
+        layout, evidence, sampled, adapter_hits, read_source, seed
+    )
+}
+
 .library_report_payload <- function(report) {
     if (!inherits(report, "selexprep_library_report")) {
         stop("`report` must be a selexprep_library_report.", call. = FALSE)

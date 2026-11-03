@@ -1,0 +1,18 @@
+Hydrocortisone DL-SELEX FASTQ subsets
+
+Source: Zibin Zhao (2025), Structure-enhanced Deep Learning Accelerates Aptamer
+Selection for Small Molecule Families like Steroids. Zenodo v1.
+https://doi.org/10.5281/zenodo.14272647
+Data collectors: Zibin Zhao and Haosi Lin.
+
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+License summary: https://creativecommons.org/licenses/by/4.0/
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+
+The source record explicitly declares cc-by-4.0 for the deposited files.
+Modifications by Marco Rota Negroni: first 600 complete R1 FASTQ records retained
+from selection rounds 3, 5 and 7 and recompressed. Read identifiers, sequences,
+separators and qualities are unchanged. These files remain licensed CC BY 4.0.
+See REAL_DATA_PROVENANCE.md and extdata/cs-source-metadata.json for full details.
+
+No endorsement by the original data creators is implied.

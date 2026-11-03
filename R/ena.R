@@ -227,9 +227,13 @@
 #'   `S4Vectors::DataFrame` in `$runs`.
 #' @export
 #' @examples
+#' # Inspect the bundled snapshot without a network connection.
+#' path <- system.file("extdata", "ena-inspection.rds", package = "selexprepR")
+#' inspection <- readRDS(path)
+#' inspection$runs[, c("run_accession", "library_strategy")]
+#' # A fresh inspection contacts ENA and requires network access.
 #' \donttest{
-#' inspection <- inspect_selexprep_accession('PRJDB19098')
-#' inspection$runs
+#' inspection <- inspect_selexprep_accession("PRJDB19098")
 #' }
 inspect_selexprep_accession <- function(accession, timeout_seconds = 30) {
     if (!is.character(accession) || length(accession) != 1L || is.na(accession) ||
@@ -271,87 +275,124 @@ inspect_selexprep_accession <- function(accession, timeout_seconds = 30) {
 #'   is also stored in `S4Vectors::metadata(result$plan)`.
 #' @export
 #' @examples
-#' \donttest{
-#' inspection <- inspect_selexprep_accession('PRJDB19098')
-#' fetch_selexprep_reads(inspection, 'raw/PRJDB19098')
-#' }
+#' # Plan from a bundled ENA metadata snapshot; no network or files written.
+#' path <- system.file("extdata", "ena-inspection.rds", package = "selexprepR")
+#' inspection <- readRDS(path)
+#' result <- fetch_selexprep_reads(inspection, tempfile("selexprep-reads-"))
+#' result$plan[, c("run_accession", "round_number", "file_name")]
+#' result$dry_run
 fetch_selexprep_reads <- function(accession_or_inspection, outdir, dry_run = TRUE,
-    overwrite = FALSE, timeout_seconds = 30, require_assigned_rounds = TRUE, overrides = numeric()) {
+    overwrite = FALSE, timeout_seconds = 30, require_assigned_rounds = TRUE,
+    overrides = numeric()) {
     valid_timeout <- is.numeric(timeout_seconds) && length(timeout_seconds) ==
         1L && !is.na(timeout_seconds) && timeout_seconds > 0
     if (!valid_timeout) {
         stop("`timeout_seconds` must be one positive number.", call. = FALSE)
     }
     inspection <- if (is.character(accession_or_inspection)) {
-        inspect_selexprep_accession(accession_or_inspection, timeout_seconds = timeout_seconds)
+        inspect_selexprep_accession(
+            accession_or_inspection, timeout_seconds = timeout_seconds
+        )
     } else {
         accession_or_inspection
     }
-    if (!is.logical(dry_run) || length(dry_run) != 1L || is.na(dry_run) || !is.logical(overwrite) ||
-        length(overwrite) != 1L || is.na(overwrite) || !is.logical(require_assigned_rounds) ||
-        length(require_assigned_rounds) != 1L || is.na(require_assigned_rounds)) {
-        stop("`dry_run`, `overwrite`, and `require_assigned_rounds` must be single non-missing logical values.",
-            call. = FALSE)
-    }
-    if (!is.character(outdir) || length(outdir) != 1L || is.na(outdir) || !nzchar(outdir)) {
-        stop("`outdir` must be one non-empty path.", call. = FALSE)
-    }
+    .validate_fetch_destination(
+        outdir, dry_run, overwrite, require_assigned_rounds
+    )
     plan <- .fetch_plan(inspection, overrides = overrides)
-    if (require_assigned_rounds) {
-        unsafe <- is.na(plan$round_number) | !plan$round_unambiguous
-        if (any(unsafe)) {
-            stop(sprintf("Refusing download: no unambiguous SELEX round assignment for %s. Supply `overrides` after manual review or set `require_assigned_rounds = FALSE` for acquisition only.",
-                paste(unique(plan$run_accession[unsafe]), collapse = ", ")), call. = FALSE)
-        }
-    }
-    shared <- S4Vectors::metadata(plan)$rounds_with_several_samples
-    if (length(shared)) {
-        labels <- vapply(names(shared), function(round) {
-            sprintf("round %s: %s", round, paste(shared[[round]], collapse = ", "))
-        }, character(1))
-        warning(sprintf(paste0("%d round(s) carry runs from more than one BioSample (%s). ",
-            "Counting merges every run of a round into one pool: suitable for replicates of one selection, ",
-            "but separate selections require separate run selections and round mappings."),
-            length(shared), paste(labels, collapse = "; ")), call. = FALSE)
-    }
+    .validate_fetch_rounds(plan, require_assigned_rounds)
+    .warn_shared_ena_samples(S4Vectors::metadata(plan)$rounds_with_several_samples)
     if (dry_run) {
-        return(structure(list(plan = plan, downloaded_files = character(), dry_run = TRUE,
-            rounds_with_several_samples = shared),
-            class = c("selexprep_fetch_result", "list")))
+        return(.new_fetch_result(plan, character(), TRUE))
     }
     dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
-    downloaded_files <- character(nrow(plan))
-    for (index in seq_len(nrow(plan))) {
-        destination <- file.path(outdir, plan$file_name[[index]])
-        if (file.exists(destination) && !overwrite) {
-            stop(sprintf("Refusing to overwrite existing file: %s", destination),
-                call. = FALSE)
-        }
-        temporary <- tempfile(pattern = ".selexprep-download-", tmpdir = outdir)
-        request <- httr2::request(plan$url[[index]])
-        request <- httr2::req_timeout(request, timeout_seconds)
-        request <- httr2::req_retry(request, max_tries = 3L)
-        request <- httr2::req_error(request, is_error = function(response) FALSE)
-        response <- httr2::req_perform(request, path = temporary)
-        if (httr2::resp_status(response) >= 400L) {
-            stop(sprintf("Download failed for %s with HTTP status %d.", plan$url[[index]],
-                httr2::resp_status(response)), call. = FALSE)
-        }
-        expected_md5 <- plan$expected_md5[[index]]
-        if (!is.na(expected_md5)) {
-            observed_md5 <- digest::digest(temporary, algo = "md5", file = TRUE)
-            if (!identical(tolower(observed_md5), tolower(expected_md5))) {
-                stop(sprintf("MD5 verification failed for %s; temporary file retained at %s.",
-                  plan$file_name[[index]], temporary), call. = FALSE)
-            }
-        }
-        if (!file.rename(temporary, destination)) {
-            stop(sprintf("Could not move verified download to %s.", destination),
-                call. = FALSE)
-        }
-        downloaded_files[[index]] <- normalizePath(destination, winslash = "/")
+    downloaded_files <- vapply(seq_len(nrow(plan)), .download_ena_fastq,
+        character(1), plan = plan, outdir = outdir, overwrite = overwrite,
+        timeout_seconds = timeout_seconds)
+    .new_fetch_result(plan, downloaded_files, FALSE)
+}
+
+.validate_fetch_destination <- function(outdir, dry_run, overwrite,
+    require_assigned_rounds) {
+    if (!is.logical(dry_run) || length(dry_run) != 1L || is.na(dry_run) ||
+        !is.logical(overwrite) || length(overwrite) != 1L || is.na(overwrite) ||
+        !is.logical(require_assigned_rounds) ||
+        length(require_assigned_rounds) != 1L || is.na(require_assigned_rounds)) {
+        stop(sprintf(
+            "%s %s", "`dry_run`, `overwrite`, and `require_assigned_rounds`",
+            "must be single non-missing logical values."
+        ), call. = FALSE)
     }
-    structure(list(plan = plan, downloaded_files = downloaded_files, dry_run = FALSE,
-        rounds_with_several_samples = shared),
-        class = c("selexprep_fetch_result", "list"))
+    if (!is.character(outdir) || length(outdir) != 1L || is.na(outdir) ||
+        !nzchar(outdir)) {
+        stop("`outdir` must be one non-empty path.", call. = FALSE)
+    }
+}
+
+.validate_fetch_rounds <- function(plan, require_assigned_rounds) {
+    if (!require_assigned_rounds) return(invisible(NULL))
+    unsafe <- is.na(plan$round_number) | !plan$round_unambiguous
+    if (any(unsafe)) {
+        message <- sprintf(paste0(
+            "Refusing download: no unambiguous SELEX round assignment for %s. ",
+            "Supply `overrides` after manual review or set ",
+            "`require_assigned_rounds = FALSE` for acquisition only."
+        ), paste(unique(plan$run_accession[unsafe]), collapse = ", "))
+        stop(message, call. = FALSE)
+    }
+}
+
+.warn_shared_ena_samples <- function(shared) {
+    if (!length(shared)) return(invisible(NULL))
+    labels <- vapply(names(shared), function(round) {
+        sprintf("round %s: %s", round, paste(shared[[round]], collapse = ", "))
+    }, character(1))
+    message <- sprintf(paste0(
+        "%d round(s) carry runs from more than one BioSample (%s). ",
+        "Counting merges every run of a round into one pool: suitable for ",
+        "replicates of one selection, but separate selections require separate ",
+        "run selections and round mappings."
+    ), length(shared), paste(labels, collapse = "; "))
+    warning(message, call. = FALSE)
+}
+
+.new_fetch_result <- function(plan, downloaded_files, dry_run) {
+    structure(list(
+        plan = plan, downloaded_files = downloaded_files, dry_run = dry_run,
+        rounds_with_several_samples =
+            S4Vectors::metadata(plan)$rounds_with_several_samples
+    ), class = c("selexprep_fetch_result", "list"))
+}
+
+.download_ena_fastq <- function(index, plan, outdir, overwrite, timeout_seconds) {
+    destination <- file.path(outdir, plan$file_name[[index]])
+    if (file.exists(destination) && !overwrite) {
+        stop(sprintf("Refusing to overwrite existing file: %s", destination),
+            call. = FALSE)
+    }
+    temporary <- tempfile(pattern = ".selexprep-download-", tmpdir = outdir)
+    request <- httr2::request(plan$url[[index]])
+    request <- httr2::req_timeout(request, timeout_seconds)
+    request <- httr2::req_retry(request, max_tries = 3L)
+    request <- httr2::req_error(request, is_error = function(response) FALSE)
+    response <- httr2::req_perform(request, path = temporary)
+    if (httr2::resp_status(response) >= 400L) {
+        stop(sprintf("Download failed for %s with HTTP status %d.",
+            plan$url[[index]], httr2::resp_status(response)), call. = FALSE)
+    }
+    expected <- plan$expected_md5[[index]]
+    if (!is.na(expected)) {
+        observed <- digest::digest(temporary, algo = "md5", file = TRUE)
+        if (!identical(tolower(observed), tolower(expected))) {
+            stop(sprintf(
+                "MD5 verification failed for %s; temporary file retained at %s.",
+                plan$file_name[[index]], temporary
+            ), call. = FALSE)
+        }
+    }
+    if (!file.rename(temporary, destination)) {
+        stop(sprintf("Could not move verified download to %s.", destination),
+            call. = FALSE)
+    }
+    normalizePath(destination, winslash = "/")
 }

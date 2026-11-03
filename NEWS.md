@@ -1,3 +1,29 @@
+# selexprepR 0.99.7
+
+* Replace the identical synthetic-round vignette with licensed, attributed
+  600-read R1 subsets of three real hydrocortisone DL-SELEX rounds. Show
+  safe inference failure, published Table S8 flanks, explicit primer
+  overrides, extraction yields, sparse counts, QC plots and demultiplexing.
+* Add package-level help and runnable offline examples to all help pages.
+  FASTQ examples create their inputs; a cached ENA inspection supports
+  offline download planning. Only fresh ENA inspection requires a network.
+* Vectorize exact adapter matching, indel-aware candidate filtering and
+  strand evidence with Biostrings. Retain original approximate-match ranking
+  for matching residual reads, including paired retention masks. Batch the
+  reverse-complement canonicalization of distinct QC k-mers.
+* Use one reverse-complement implementation for counting and extraction,
+  preserving the public DNA/RNA, case and ambiguity policy and fixing the
+  internal failure on other nucleotide symbols.
+* Simplify shared flank evidence, QC thresholds, mate pooling, barcode
+  comparisons and verified downloads; preserve public result schemas, RNG
+  behavior and failure diagnostics while shortening workflow functions.
+* Normalize lowercase RNA barcodes and reads consistently with uppercase
+  RNA and DNA, reusing the common alphabet-normalization helper.
+* Document redistribution terms separately for the MIT catalog compilation,
+  CC BY 4.0 FASTQ subsets, public metadata and synthetic regression fixtures.
+  Preserve the Python v0.4.6 catalog values and original curation statuses;
+  record human spot checks separately from model agreement.
+
 # selexprepR 0.99.6
 
 * Simplify ENA condition messages to address the two new BiocCheck coding
