@@ -42,7 +42,8 @@
         values <- rbind(input = provenance$input, extracted = provenance$output)
         graphics::barplot(values, beside = TRUE, names.arg = rounds,
             col = .qc_plot_colours[seq_len(2L)],
-            border = NA, las = 2, cex.names = 0.75, ylab = "Reads", main = "Read retention")
+            border = NA, las = 2, cex.names = 0.75, ylab = "Reads", main = "Read retention",
+            ylim = c(0, 1.5 * max(1, values)))
         graphics::legend("topright", legend = rownames(values),
             fill = .qc_plot_colours[seq_len(2L)],
             border = NA, bty = "n", cex = 0.75)
@@ -104,6 +105,7 @@
     }
     counts <- counts[rounds]
     distributions <- lapply(counts, function(round_counts) {
+        round_counts <- round_counts[round_counts > 0]
         if (!length(round_counts)) {
             return(numeric())
         }
@@ -114,7 +116,7 @@
         .qc_plot_unavailable("Random-region lengths", "No counted sequences")
         return(invisible(NULL))
     }
-    fractions <- matrix(0, nrow = length(lengths), ncol = length(rounds), dimnames = list(lengths,
+    fractions <- matrix(NA_real_, nrow = length(lengths), ncol = length(rounds), dimnames = list(lengths,
         rounds))
     for (index in seq_along(distributions)) {
         distribution <- distributions[[index]]
@@ -122,24 +124,18 @@
             next
         }
         rows <- match(as.integer(names(distribution)), lengths)
-        fractions[rows, index] <- as.numeric(distribution)
-        total <- sum(fractions[, index])
-        if (total > 0) {
-            fractions[, index] <- fractions[, index]/total
-        }
+        fractions[rows, index] <- as.numeric(distribution) / sum(distribution)
     }
     x_limits <- range(lengths)
     if (!diff(x_limits)) {
         x_limits <- x_limits + c(-0.5, 0.5)
     }
     colours <- rep(.qc_plot_colours, length.out = length(rounds))
-    graphics::matplot(lengths, fractions, type = "o",
-        lty = rep(seq_len(6L), length.out = length(rounds)),
+    graphics::matplot(lengths, fractions, type = "p",
         pch = rep(seq.int(15L, 20L), length.out = length(rounds)),
-        col = colours, xlim = x_limits,
-        xlab = "Random-region length", ylab = "Fraction of reads", main = "Length distribution")
+        col = colours, xlim = x_limits, ylim = c(0, 1),
+        xlab = "Recovered sequence length (nt)", ylab = "Fraction of reads", main = "Length distribution")
     graphics::legend("topright", legend = rounds, col = colours,
-        lty = rep(seq_len(6L), length.out = length(rounds)),
         pch = rep(seq.int(15L, 20L), length.out = length(rounds)),
         bty = "n", cex = 0.65, ncol = max(1, ceiling(length(rounds)/8)))
     invisible(NULL)

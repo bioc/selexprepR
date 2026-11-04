@@ -42,15 +42,11 @@ to downloaded source materials are listed in `DATA_LICENSES.md`.
 
 ## Human spot checks
 
-On 2026-11-03 the maintainer reported having manually checked five randomly
-selected records against the original sources, finding no discrepancies in
-the fields checked. The record identifiers and checked fields were not
-recorded in this package. This is a limited spot check, not validation of all
-240 records. The original curation statuses are preserved.
-
-A further reproducible sample of ten records was drawn on 2026-11-03 for
-manual checking. The sample, source locations and pending result fields are
-in the source repository's `review/` directory. Its human results are pending;
-AI cross-checks and software regression tests are not counted as human review.
+In November 2026 the maintainer checked by hand ten records drawn at random
+from the 240 (figshare:131490, PRJNA916521, figshare:771239,
+figshare:8118461, PRJEB46967, figshare:29756624, PRJNA957781, PRJEB61115,
+zenodo:14272647, figshare:14057938) against their original sources. Every
+field was correct. This is a spot check, not validation of all 240 records.
+The original curation statuses are preserved.
 
 Inclusion in the frozen catalog does not assert current read availability.

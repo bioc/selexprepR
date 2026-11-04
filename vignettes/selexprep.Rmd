@@ -36,6 +36,20 @@ reads or installing software.
 library(selexprepR)
 ```
 
+# Start with your own reads
+
+| What you have | Where to start |
+| --- | --- |
+| One FASTQ per round | Name a vector of paths `round_00`, `round_01`, and so on, using the actual round numbers. Pass it to `run_selexprep_files()`. |
+| Paired-end reads or several files per round | Pass a table with `path`, `round_number` and `mate` columns to `run_selexprep_files()`. Give each file its own row and use `"R1"` and `"R2"` to identify paired mates. |
+| Reads with inline round barcodes | Read the FASTQ with `read_selexprep_fastq()` and call `selexprep_demultiplex()` with your barcode-to-round map. Review unassigned reads and pass the result to `run_selexprep()`. |
+
+If you know the flanking sequences, supply `primer_5p` and `primer_3p` in
+the orientation of the reads you intend to count. To infer the layout first,
+load your round-separated reads with `read_selexprep_inputs()` and inspect
+the report from `selexprep_detect()` before relying on the inferred boundaries.
+The example below shows both layout inspection and explicit primers.
+
 # A small real-data example
 
 The example reads come from Zibin Zhao's hydrocortisone DL-SELEX deposit,
@@ -96,10 +110,11 @@ report[c(
 )]
 ```
 
-Here the detector returns `UNABLE_TO_INFER`: the raw R1 sample contains both
-orientations and sequencing-adapter read-through, without a sufficiently
-supported unambiguous pair of flanks. The safe failure is useful information;
-it does not silently count untrimmed reads.
+Here the detector returns `UNABLE_TO_INFER`. Its `failure_reason` reports
+that neither flank candidate reached the 0.40 match-rate threshold. The safe
+failure is useful information; it does not silently count untrimmed reads.
+When inference fails on your data, take the flanks from the library design or
+sequencing protocol and supply them as explicit primers, as shown below.
 
 The [article's supplement](https://doi.org/10.1093/bib/bbaf680), Table S8,
 marks the flanks of its aptamers in lowercase. These provide an external source
@@ -114,22 +129,35 @@ primer_5p <- reverse_complement(published_3p)
 primer_3p <- reverse_complement(published_5p)
 ```
 
-Only reads containing both primers in this chosen orientation contribute
-counts; opposite-orientation reads and other unmatched reads remain excluded.
-The result is therefore a documented subset, not a count of every molecule in
-the deposit. Its retention and QC warnings below remain part of the
-interpretation. `HIGH` and `MEDIUM` in an inferred report would describe read
-support, not independent confirmation of a biological constant/random
-boundary. Review the published library design before interpreting a selected
-pool, especially when its early unselected round is unavailable.
+This is an explicit choice to demonstrate one orientation of the raw R1
+pool: reads in the published orientation are present in similar numbers, so
+either choice would be possible here. This example counts only reads
+containing both primers in the chosen orientation;
+opposite-orientation reads and other unmatched reads remain excluded and are
+not added to the counts. The result is therefore a documented subset, not a
+count of every molecule in the deposit. The counted sequences are the reverse
+complement of the aptamers printed in Table S8; use
+`reverse_complement(rownames(experiment))` to compare them with that table.
+Primers may match anywhere in a read, with up to 10% substitutions or indels
+(see `?selexprep_extract`). The retention and QC warnings below remain part
+of the interpretation. `HIGH` and `MEDIUM` in an inferred report would
+describe read support, not independent confirmation of a biological
+constant/random boundary. Review the published library design before
+interpreting a selected pool, especially when its early unselected round is
+unavailable.
 
 # Extract, count and inspect provenance
 
 `run_selexprep_files()` runs detection, extraction, counting and QC from local
 FASTQ files. The same workflow accepts `inputs` through `run_selexprep(inputs)`.
-For paired inputs, specify both mates in every round. When the primers are
-split across mates, the trimmed sides remain separate; counting full inserts
-requires an explicit read-merging step.
+The source deposit is paired-end. All bundled R1 reads are 150 nucleotides
+long, enough to cover the expected 72-nucleotide construct (two flanks and a
+39-nucleotide variable region), so this example supplies R1 only. Consider
+the same when your R1 reads are long enough to contain both flanks. For
+paired inputs, specify both mates in every round. When the primers are split
+across mates, the trimmed sides remain separate and the experiment has no
+counted rows. In that case, merge the read pairs with an external tool and
+supply the merged FASTQ as one file per round.
 
 ```{r file-workflow}
 experiment <- run_selexprep_files(
@@ -138,12 +166,23 @@ experiment <- run_selexprep_files(
 )
 experiment
 counts <- SummarizedExperiment::assay(experiment, "counts")
-Matrix::colSums(counts)
+round_info <- SummarizedExperiment::colData(experiment)
+stopifnot(identical(colnames(counts), rownames(round_info)))
+data.frame(
+    round = round_info$round,
+    counted_reads = unname(Matrix::colSums(counts))
+)
 head(SummarizedExperiment::rowData(experiment))
 ```
 
-A zero in the matrix means a sequence was not observed in that sample; it does
-not establish absence from the full selection pool.
+Use `counts` and the aligned `round_info` as inputs for downstream work.
+The numeric round of each input file is recorded in the `round_number`
+column of `S4Vectors::metadata(experiment)$input_files`; the final section
+exports one count table per round.
+Before comparing rounds, check the round assignments against your study design,
+then review extraction yields and QC. The counts here cover the selected
+read orientation. A zero means a sequence was not observed among the
+retained reads for that round.
 
 ```{r provenance-and-yields}
 metadata <- S4Vectors::metadata(experiment)
@@ -170,16 +209,62 @@ to review; they do not automatically remove samples or reads.
 ```{r qc-tables}
 qc <- metadata$qc
 qc$per_round
-qc$flags
+qc$flags[, c("name", "severity")]
 ```
 
-Supply the experiment as the second plot argument so it can use extraction
-provenance and sequence-length distributions. The following panels show
-retention, read-weighted lengths and diversity for these actual sampled rounds.
+The `evidence` column holds the values behind each flag. In this example:
 
-```{r qc-plot, fig.width=8, fig.height=10}
-plot(qc, experiment, which = c("retention", "length", "diversity"))
+- `low_total_reads`: every round has fewer than the default 10,000 reads.
+- `strand_mix`: more than 20% of the reads in each round start with the
+  reverse complement of `primer_3p`, i.e. the opposite orientation.
+- `low_primer_match`: this flag uses the match rates measured during
+  detection, which are 0 here. They are not recomputed for the supplied
+  primers; use the retention figures above for those.
+- `adapter_contamination_high`: 489 of the 600 raw reads used for detection
+  contain the TruSeq read-1 adapter. This describes the raw reads; the
+  `truseq_reads_fraction` of the extracted sequences above is 0.
+
+Supply the experiment as the second argument to `plot()` so the plots can
+use extraction provenance and sequence-length distributions.
+
+```{r qc-retention, fig.width=6, fig.height=3.6, dpi=160, out.width="100%", fig.cap="Input and retained reads by round."}
+plot(qc, experiment, which = "retention", cex = 1.2)
 ```
+
+Each round starts with 600 reads. The retained fraction ranges from about
+38% to 49%. Extraction targets one orientation in a mixed input, and reads
+without both matching primers are excluded. On your data, inspect the primer
+sequences and read orientation if a round has unexpectedly low retention.
+
+```{r qc-length, fig.width=6, fig.height=3.6, dpi=160, out.width="100%", fig.cap="Read-weighted lengths of the extracted regions."}
+plot(qc, experiment, which = "length", cex = 1.2)
+```
+
+Each point shows the fraction of retained reads at an observed length in
+one round. All three rounds peak at 39 nucleotides (214/225, 255/277 and
+266/294 reads). This agrees with the 39-nucleotide variable region reported
+for CS round 3 in Supplementary Note S8. A few reads extend past
+100 nucleotides (2, 3 and 5 reads, respectively). The plot measures the
+sequences recovered between the chosen flanks. All ten sequences above
+100 nucleotides contain a further copy of `primer_5p`, and nine contain the
+first 10 nucleotides of `primer_3p`; these are hints about their structure,
+not a determined origin. Each is counted as one sequence. Compare the peak
+with your library design and inspect the original reads and primer matches
+behind an unexpected tail before interpreting it.
+
+```{r qc-diversity, fig.width=6, fig.height=9.6, dpi=160, out.width="100%", fig.cap="Sequence diversity within each retained round."}
+plot(qc, experiment, which = "diversity", mfrow = c(3, 1), cex = 1.15,
+    mar = c(5.3, 5.5, 2.5, 1), mgp = c(3.7, 0.7, 0))
+```
+
+The diversity panels show the number of distinct sequences, Shannon entropy
+and the fraction of reads contributed by the 100 most abundant sequences in
+each round. Compare them alongside read depth and retention when assessing
+how strongly a small set of sequences dominates a pool. In this example each
+round has only 206 to 244 distinct sequences among 225 to 294 reads, so the
+100 most abundant sequences are already a large share of the distinct
+sequences observed. Read their coverage of about 0.48 to 0.53 in that
+context.
 
 # Inline-barcode demultiplexing
 
@@ -233,6 +318,27 @@ write_library_report(metadata$library_report,
 write_selexprep_manifest(metadata$manifest,
     file.path(outdir, "selexprep_manifest.json"))
 list.files(outdir)
+```
+
+Count tables use a stable four-column format (`sequence`, `reads`, `rank`,
+`rpm`) and can be written as TSV, CSV, RDS or Parquet. Here we build one table
+per round from the extracted sequences, check that it matches the count
+matrix, and write it with its round number in the file name.
+
+```{r export-counts}
+round_numbers <- sort(unique(metadata$input_files$round_number))
+round_numbers
+count_tables <- lapply(metadata$extraction$sequences_by_round, selexprep_count)
+stopifnot(identical(
+    vapply(count_tables, function(table) sum(table$reads), numeric(1)),
+    Matrix::colSums(counts)
+))
+for (round in names(count_tables)) {
+    write_selexprep_counts(count_tables[[round]],
+        file.path(outdir, paste0(round, "_counts.tsv")))
+}
+list.files(outdir)
+head(read_selexprep_counts(file.path(outdir, "round_03_counts.tsv")), 3)
 ```
 
 The bundled catalog is a frozen, offline discovery snapshot from Python

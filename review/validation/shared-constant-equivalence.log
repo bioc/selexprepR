@@ -1,5 +1,0 @@
-Warning message:
-replacing previous import ‘S4Arrays::read_block’ by ‘DelayedArray::read_block’ when loading ‘SummarizedExperiment’
-PASS: 350 direct baseline/refactor shared-constant comparisons.
-Coverage: both flanks, 0-18 outer nt, three rounds, variable tags,
-missing/duplicate anchors, repeated cores and named reads.

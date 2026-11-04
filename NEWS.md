@@ -4,6 +4,12 @@
   600-read R1 subsets of three real hydrocortisone DL-SELEX rounds. Show
   safe inference failure, published Table S8 flanks, explicit primer
   overrides, extraction yields, sparse counts, QC plots and demultiplexing.
+* Add a vignette guide for starting from your own reads. Explain the chosen
+  read orientation, paired-end inputs and each QC flag in the example, and
+  export one count table per round with `write_selexprep_counts()`.
+* Show the QC retention, length and diversity plots as separate figures.
+  Length fractions omit lengths not observed in a round, and the retention
+  plot leaves room for its legend.
 * Add package-level help and runnable offline examples to all help pages.
   FASTQ examples create their inputs; a cached ENA inspection supports
   offline download planning. Only fresh ENA inspection requires a network.

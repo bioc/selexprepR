@@ -55,10 +55,10 @@ latter defaults to a checksum-aware dry-run plan.
 The R implementation is aligned to Python `selexprep v0.4.6` (commit
 `63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5`), with independent R versioning.
 Shared constants are checked across rounds; extraction warns when fewer than
-half the reads survive, with separate FASTQ diagnostics for file workflows. `HIGH` and `MEDIUM` describe read support rather than a
-verified constant/random boundary. Consult the study's library design when a
-diverse early round is missing. See `inst/UPSTREAM_ALIGNMENT.md` for scope,
-intentional R interface differences, and reproducible regression references.
+half the reads survive, with separate FASTQ diagnostics for file workflows.
+`HIGH` and `MEDIUM` describe read support rather than a verified
+constant/random boundary. Consult the study's library design when a diverse
+early round is missing.
 
 ## Development status
 

@@ -73,7 +73,7 @@ Files under `tests/testthat/fixtures/` contain synthetic regression inputs
 and reference outputs authored for selexprep/selexprepR. These are covered by
 the MIT grant, copyright 2026 Marco Rota Negroni. They do not contain copied
 publication text or experimental sequencing reads. Commit-pinned provenance
-is documented in their README files and `UPSTREAM_ALIGNMENT.md`.
+is documented in their README files.
 
 Any barcodes added to real sequences solely for the demultiplexing example
 are illustrative package-authored data; the original sequencing subset

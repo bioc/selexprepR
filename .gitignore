@@ -8,3 +8,6 @@
 selexprep_*.tar.gz
 selexprepR_*.tar.gz
 upstream-selexprep/
+
+# Local review and working notes
+review/

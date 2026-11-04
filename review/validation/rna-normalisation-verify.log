@@ -1,6 +1,0 @@
-Warning message:
-replacing previous import ‘S4Arrays::read_block’ by ‘DelayedArray::read_block’ when loading ‘SummarizedExperiment’
-Reference: c2f7abdc07a12278bb2c459f064f119f0cb7f7e1
-PASS: 72 complete demultiplex objects unchanged for DNA case and uppercase RNA, paired/unpaired, trimming on/off, mismatch 0/1.
-INTENDED CHANGE: lowercase RNA reads now match equivalent DNA barcodes; insert alphabet/case unchanged.
-INTENDED CHANGE: lowercase RNA barcode names are now valid equivalents of uppercase RNA and DNA names.
