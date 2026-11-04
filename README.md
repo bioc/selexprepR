@@ -53,7 +53,7 @@ It works offline and carries snapshot provenance in
 latter defaults to a checksum-aware dry-run plan.
 
 The R implementation is aligned to Python `selexprep v0.4.7` (commit
-`8e8ffb077f42275306d17d024668af6bc61e492b`), with independent R versioning.
+`52975018fbe027625f75154dc464e667e4941818`), with independent R versioning.
 Shared constants are checked across rounds; extraction warns when fewer than
 half the reads survive, with separate FASTQ diagnostics for file workflows.
 `HIGH` and `MEDIUM` describe read support rather than a verified
