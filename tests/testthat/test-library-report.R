@@ -97,6 +97,16 @@ test_that("a zero-length inferred insert is refused", {
     expect_match(report$failure_reason, "0 nt", fixed = TRUE)
 })
 
+test_that("low-match failures name sides without a candidate flank", {
+    reason <- selexprepR:::.low_match_reason
+    expect_identical(reason(0, 0, FALSE, FALSE),
+        "No candidate 5' or 3' flank found in the earliest round")
+    expect_identical(reason(0.3, 0, TRUE, FALSE),
+        "Both primer match rates below 0.40 (5'=0.30, 3'=no candidate)")
+    expect_identical(reason(0.3, 0.1, TRUE, TRUE),
+        "Both primer match rates below 0.40 (5'=0.30, 3'=0.10)")
+})
+
 test_that("outer-edge noise can be rescued without changing the insert boundary", {
     primer_5p <- "GGTAATACGACTCACTATAGGG"
     primer_3p <- "CGTGGTTACAGTCAGAGGACAGATT"

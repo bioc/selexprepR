@@ -21,9 +21,14 @@
   fixing the internal failure on other nucleotide symbols.
   `reverse_complement()` now complements IUPAC ambiguity codes (R/Y, K/M,
   B/V, D/H) while keeping case, RNA input and other symbols.
-* Measure match rates for manually supplied primers on the earliest round,
-  so the library report and the `low_primer_match` QC flag describe the
-  primers actually used for extraction.
+* Measure match rates and insert lengths for manually supplied primers on
+  the earliest round, so the library report and the `low_primer_match` QC
+  flag describe the primers actually used for extraction.
+* Report sides without a candidate flank as such in detection failures,
+  instead of a 0.00 match rate.
+* Name reads in the opposite orientation as a possible cause in low-yield
+  extraction warnings.
+* Describe the QC summaries and flags in `selexprep_qc()` as computed.
 * Simplify shared flank evidence, QC thresholds, mate pooling, barcode
   comparisons and verified downloads; preserve public result schemas, RNG
   behavior and failure diagnostics while shortening workflow functions.

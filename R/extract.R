@@ -144,7 +144,8 @@
             "Extraction: ", length(low_yield),
             " round(s) kept under half of their reads or under half the best ",
             "round's yield; the primers may not fit their reads ",
-            "(run-specific outer sequence or a different construct): ",
+            "(run-specific outer sequence, a different construct or reads in ",
+            "the opposite orientation): ",
             paste(low_yield, collapse = "; ")
         ), call. = FALSE)
     }
@@ -238,8 +239,23 @@
     mean(matched)
 }
 
-# Match rates of supplied primers, measured on the earliest round in the
-# orientation used for extraction.
+# Insert lengths after removing the reviewed primers from the earliest round.
+.override_insert_lengths <- function(fields, earliest) {
+    mode <- fields$extraction_mode
+    if (!mode %in% c("BOTH_PRIMERS_SINGLE_READ", "FIVE_PRIME_ONLY",
+        "THREE_PRIME_ONLY")) {
+        return(fields)
+    }
+    trimmed <- .trim_round(earliest, mode, fields$primer_5p, fields$primer_3p)
+    stats <- .n_length_stats(unname(trimmed), 0L, 0L)
+    fields["n_length_mode"] <- list(stats$mode)
+    fields$n_length_distribution <- stats$distribution
+    fields$n_length_confidence <- stats$confidence
+    fields
+}
+
+# Match rates and insert lengths of supplied primers, measured on the
+# earliest round in the orientation used for extraction.
 .override_match_rates <- function(fields, primer_5p, primer_3p,
     sequences_by_round, paired_mate_streams) {
     if (is.null(sequences_by_round) || !length(sequences_by_round)) {
@@ -264,7 +280,7 @@
             fields$match_rate_3p <- .primer_match_rate(earliest, primer_3p)
         }
     }
-    fields
+    .override_insert_lengths(fields, earliest)
 }
 
 .apply_primer_overrides <- function(report, primer_5p = NULL,

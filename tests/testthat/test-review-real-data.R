@@ -45,6 +45,8 @@ test_that("real FASTQ workflow records safe inference and honest retention", {
     inputs <- read_selexprep_inputs(paths)
     report <- selexprep_detect(inputs$sequences_by_round)
     expect_identical(report$status, "UNABLE_TO_INFER")
+    expect_identical(report$failure_reason,
+        "No candidate 5' or 3' flank found in the earliest round")
     expect_error(run_selexprep_files(paths), "does not permit extraction")
     captured <- .real_capture_warnings(do.call(run_selexprep_files,
         c(list(x = paths), .real_example_arguments())))
@@ -62,6 +64,8 @@ test_that("real FASTQ workflow records safe inference and honest retention", {
     report <- S4Vectors::metadata(experiment)$library_report
     expect_equal(report$match_rate_5p, 236 / 600)
     expect_equal(report$match_rate_3p, 228 / 600)
+    expect_identical(report$n_length_mode, 39)
+    expect_equal(report$n_length_confidence, 214 / 225)
     expect_identical(S4Vectors::metadata(experiment)$manifest$parameters[[
         "manual_primer_override"]], "true")
 })

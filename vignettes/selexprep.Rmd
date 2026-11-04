@@ -111,7 +111,7 @@ report[c(
 ```
 
 Here the detector returns `UNABLE_TO_INFER`. Its `failure_reason` reports
-that neither flank candidate reached the 0.40 match-rate threshold. The safe
+that no candidate 5' or 3' flank was found in the earliest round. The safe
 failure is useful information; it does not silently count untrimmed reads.
 When inference fails on your data, take the flanks from the library design or
 sequencing protocol and supply them as explicit primers, as shown below.

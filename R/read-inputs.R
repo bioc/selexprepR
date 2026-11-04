@@ -354,7 +354,8 @@ run_selexprep_files <- function(x, round = NULL, mate = NULL, max_reads_per_file
             "Extraction: ", length(low_yield),
             " input FASTQ(s) kept under half of their reads or under half ",
             "the best input's yield; the primers may not fit their reads ",
-            "(run-specific outer sequence or a different construct): ",
+            "(run-specific outer sequence, a different construct or reads in ",
+            "the opposite orientation): ",
             paste(low_yield, collapse = "; ")
         ), call. = FALSE)
     }

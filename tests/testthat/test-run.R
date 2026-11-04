@@ -97,6 +97,8 @@ test_that("run_selexprep records manually reviewed primer overrides", {
     )
     expect_equal(metadata$library_report$match_rate_5p, 1)
     expect_equal(metadata$library_report$match_rate_3p, 1)
+    expect_identical(metadata$library_report$n_length_mode, 4)
+    expect_equal(metadata$library_report$n_length_confidence, 1)
     expect_false("low_primer_match" %in% metadata$qc$flags$name)
 })
 

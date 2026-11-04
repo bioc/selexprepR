@@ -259,10 +259,13 @@
 }
 #' Quality-control summary for a SELEX count experiment
 #'
-#' Calculates depth, diversity, enrichment and sequence-length summaries for
-#' each round of a `SummarizedExperiment` returned by `run_selexprep()`. It
-#' also returns actionable flags for low depth, unstable random-region length,
-#' weak primer evidence and paired-end libraries that need read merging.
+#' Calculates depth, diversity, composition and sequence-length summaries for
+#' each round of a `SummarizedExperiment` returned by `run_selexprep()`, and
+#' k-mer distances between rounds. Flags mark conditions to review: low
+#' depth, length differences across rounds, unexpected diversity changes,
+#' non-standard bases, residual or high adapter content, mixed read
+#' orientation, weak primer matches and paired-end libraries that need read
+#' merging. Flags do not remove rounds or reads.
 #'
 #' @param experiment A `SummarizedExperiment` with an assay named `'counts'`
 #'   and a `sequence` column in `rowData`.

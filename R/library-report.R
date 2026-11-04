@@ -559,13 +559,27 @@
     if (!has_round_map && identical(status, "HIGH"))
         "MEDIUM" else status
 }
+# A side without a candidate flank has no measured rate; say so explicitly.
+.low_match_reason <- function(match_rate_5p, match_rate_3p, candidate_5p,
+    candidate_3p) {
+    if (!candidate_5p && !candidate_3p) {
+        return("No candidate 5' or 3' flank found in the earliest round")
+    }
+    side <- function(rate, candidate) {
+        if (candidate) sprintf("%.2f", rate) else "no candidate"
+    }
+    sprintf("Both primer match rates below 0.40 (5'=%s, 3'=%s)",
+        side(match_rate_5p, candidate_5p), side(match_rate_3p, candidate_3p))
+}
+
 .classify_library <- function(match_rate_5p, match_rate_3p, n_length_confidence,
-    has_paired_split, has_round_map, confidence) {
+    has_paired_split, has_round_map, confidence, candidate_5p = TRUE,
+    candidate_3p = TRUE) {
     if (match_rate_5p < 0.4 && match_rate_3p < 0.4) {
         return(list(extraction_mode = "UNABLE_TO_EXTRACT", full_insert_recovered = FALSE,
             required_action = "MANUAL_PRIMERS_REQUIRED", status = "UNABLE_TO_INFER",
-            failure_reason = sprintf("Both primer match rates below 0.40 (5'=%.2f, 3'=%.2f)",
-                match_rate_5p, match_rate_3p)))
+            failure_reason = .low_match_reason(match_rate_5p, match_rate_3p,
+                candidate_5p, candidate_3p)))
     }
     if (has_paired_split) {
         mode <- "PAIRED_END_SPLIT_PRIMERS"
@@ -893,7 +907,9 @@ selexprep_detect <- function(sequences_by_round,
     ), has_round_map)
     classification <- .classify_library(
         evidence$match_5p, evidence$match_3p, lengths$confidence,
-        layout$has_paired_split, has_round_map, confidence
+        layout$has_paired_split, has_round_map, confidence,
+        candidate_5p = !is.null(layout$primer_5p),
+        candidate_3p = !is.null(layout$primer_3p_lookup)
     )
     .new_library_report(list(
         primer_5p = layout$primer_5p, primer_3p = layout$primer_3p,

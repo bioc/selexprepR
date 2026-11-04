@@ -39,10 +39,13 @@ A \code{selexprep_qc} list with \code{per_round}, \code{round_similarity}, and
 \code{flags} DataFrames plus the applied \code{settings}.
 }
 \description{
-Calculates depth, diversity, enrichment and sequence-length summaries for
-each round of a \code{SummarizedExperiment} returned by \code{run_selexprep()}. It
-also returns actionable flags for low depth, unstable random-region length,
-weak primer evidence and paired-end libraries that need read merging.
+Calculates depth, diversity, composition and sequence-length summaries for
+each round of a \code{SummarizedExperiment} returned by \code{run_selexprep()}, and
+k-mer distances between rounds. Flags mark conditions to review: low
+depth, length differences across rounds, unexpected diversity changes,
+non-standard bases, residual or high adapter content, mixed read
+orientation, weak primer matches and paired-end libraries that need read
+merging. Flags do not remove rounds or reads.
 }
 \examples{
 p5 <- 'GGTAATACGACTCACTATAGGG'
