@@ -55,8 +55,8 @@ test_that("real FASTQ workflow records safe inference and honest retention", {
     expect_true(any(grepl("3 round(s)", captured$warnings, fixed = TRUE)))
     expect_true(any(grepl("3 input FASTQ(s)", captured$warnings, fixed = TRUE)))
     expect_identical(as.numeric(Matrix::colSums(
-        SummarizedExperiment::assay(experiment, "counts"))), c(225, 277, 294))
-    expect_identical(dim(experiment), c(684L, 3L))
+        SummarizedExperiment::assay(experiment, "counts"))), c(228, 278, 297))
+    expect_identical(dim(experiment), c(689L, 3L))
     expect_identical(S4Vectors::metadata(experiment)$extraction$input_reads,
         c(round_03 = 600, round_05 = 600, round_07 = 600))
     expect_true("low_total_reads" %in%
@@ -65,7 +65,7 @@ test_that("real FASTQ workflow records safe inference and honest retention", {
     expect_equal(report$match_rate_5p, 236 / 600)
     expect_equal(report$match_rate_3p, 228 / 600)
     expect_identical(report$n_length_mode, 39)
-    expect_equal(report$n_length_confidence, 214 / 225)
+    expect_equal(report$n_length_confidence, 219 / 228)
     expect_identical(S4Vectors::metadata(experiment)$manifest$parameters[[
         "manual_primer_override"]], "true")
 })

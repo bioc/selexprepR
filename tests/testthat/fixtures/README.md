@@ -17,6 +17,6 @@ d5d499ce4f1c39bf2310db39b954804e0028155d50d4b3439238abef73acd17b  library-report
 5cf6c206cc65bf3ba212a86a53e36ec2e9cb0ffaa4da83ac1a77eb02d0d726fe  library-report-unable.json
 ```
 
-Extraction parity is tested separately against cutadapt 5.2 for substitutions,
-insertions, deletions, unanchored full-primer matches, RNA/DNA alphabet
-normalization, and paired-end coordinate handling.
+Primer trimming is tested read by read against cutadapt 5.2, on synthetic edge
+cases and on the bundled real reads; see
+`cutadapt-5.2-reference-provenance.md`.

@@ -1,69 +1,6 @@
-.adapter_match <- function(sequence, primer) {
-    sequence <- .normalise_adapter_alphabet(sequence)
-    primer <- .normalise_adapter_alphabet(primer)
-    max_errors <- floor(nchar(primer) * 0.1)
-    subject <- Biostrings::BString(sequence)
-    pattern <- Biostrings::BString(primer)
-    hits <- Biostrings::matchPattern(pattern, subject, max.mismatch = max_errors,
-        with.indels = TRUE, fixed = TRUE)
-    if (!length(hits)) {
-        return(NULL)
-    }
-    starts <- Biostrings::start(hits)
-    ends <- Biostrings::end(hits)
-    errors <- Biostrings::neditAt(pattern, subject, at = starts, with.indels = TRUE,
-        fixed = TRUE)
-    widths <- ends - starts + 1L
-    scores <- pmin(nchar(primer), widths) - 2L * errors
-    best <- order(-scores, errors, starts, -ends, method = "radix")[[1L]]
-    c(start = starts[[best]], end = ends[[best]])
-}
-# Exact matches have the maximum possible adapter score. Find those in one
-# native Biostrings call; only distinct residual reads need indel alignment.
-.adapter_matches <- function(sequences, primer) {
-    coordinates <- matrix(NA_integer_, nrow = length(sequences), ncol = 2L,
-        dimnames = list(NULL, c("start", "end")))
-    if (!length(sequences)) {
-        return(coordinates)
-    }
-    normalised <- .normalise_adapter_alphabet(sequences)
-    primer <- .normalise_adapter_alphabet(primer)
-    hits <- Biostrings::vmatchPattern(Biostrings::BString(primer),
-        Biostrings::BStringSet(normalised), fixed = TRUE)
-    counts <- S4Vectors::elementNROWS(hits)
-    matched <- counts > 0L
-    first <- cumsum(counts) - counts + 1L
-    starts <- unlist(Biostrings::start(hits), use.names = FALSE)
-    coordinates[matched, "start"] <- starts[first[matched]]
-    coordinates[matched, "end"] <- coordinates[matched, "start"] +
-        nchar(primer) - 1L
-    residual <- which(!matched)
-    if (length(residual)) {
-        coordinates[residual, ] <- .approximate_adapter_matches(
-            normalised[residual], primer)
-    }
-    coordinates
-}
-
-.approximate_adapter_matches <- function(sequences, primer) {
-    distinct <- unique(sequences)
-    coordinates <- matrix(NA_integer_, nrow = length(distinct), ncol = 2L,
-        dimnames = list(NULL, c("start", "end")))
-    candidates <- Biostrings::vcountPattern(Biostrings::BString(primer),
-        Biostrings::BStringSet(distinct),
-        max.mismatch = floor(nchar(primer) * 0.1),
-        with.indels = TRUE, fixed = TRUE) > 0L
-    # Biostrings vectorizes indel-aware counts but not their coordinates.
-    # Resolve only matching, distinct residual reads with the original ranking.
-    if (any(candidates)) {
-        coordinates[candidates, ] <- t(vapply(distinct[candidates],
-            function(sequence) .adapter_match(sequence, primer), integer(2)))
-    }
-    coordinates[match(sequences, distinct), , drop = FALSE]
-}
-
 .trim_adapter <- function(sequences, primer, side) {
-    coordinates <- .adapter_matches(sequences, primer)
+    coordinates <- .primer_matches(sequences, primer,
+        front = identical(side, "after"))
     kept <- rep(NA_character_, length(sequences))
     matched <- !is.na(coordinates[, "start"])
     kept[matched] <- if (identical(side, "after")) {
@@ -327,11 +264,15 @@
 #' report. In split-primer paired-end mode, the two trimmed sides remain
 #' separate; they are never silently merged.
 #'
-#' Full-primer matching follows the cutadapt defaults used by the Python
-#' pipeline: adapters may occur away from the read boundary, substitutions
-#' and indels are allowed up to a 10 percent error rate, and RNA `U` is
-#' matched as DNA `T`. The returned insert retains the alphabet and case of
-#' the input read.
+#' Primers are located as cutadapt 5.2 locates adapters with its defaults, as
+#' in the Python pipeline. A primer may occur anywhere in the read, with
+#' substitutions and indels up to a 10 percent error rate over its aligned
+#' part. A 5' primer may be cut short at the read start and a 3' primer at the
+#' read end, if at least 3 of its bases align. When a read holds several
+#' acceptable occurrences, the first one is kept unless a later one overlaps
+#' it or covers more of the primer, and aligns with a higher score. IUPAC
+#' codes in a primer match the bases they stand for. RNA `U` is matched as DNA
+#' `T`. The returned insert retains the alphabet and case of the input read.
 #'
 #' @param sequences_by_round A named list of character vectors or
 #'   `Biostrings::XStringSet` objects containing R1 sequences.

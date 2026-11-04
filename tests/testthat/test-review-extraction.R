@@ -26,7 +26,7 @@ test_that('reverse complement keeps names and case, complements IUPAC codes', {
     expect_identical(reverse_complement('\u00e9Ac'), 'gT\u00e9')
 })
 
-test_that('adapter ranking chooses exact matches and the earliest exact tie', {
+test_that('primer occurrences are chosen as cutadapt 5.2 chooses them', {
     report <- .review_extraction_report()
     p5 <- report$primer_5p
     p3 <- report$primer_3p
@@ -37,8 +37,10 @@ test_that('adapter ranking chooses exact matches and the earliest exact tie', {
         paste0(p5, 'GATT', p3, 'CCCC', p3)
     )
     extracted <- selexprep_extract(list(round_00 = reads), report)
+    # The first acceptable occurrence is kept: a later exact copy does not
+    # replace a one-error match that it does not overlap (cutadapt output).
     expect_identical(as.character(extracted$sequences_by_round$round_00),
-        c('cGNu', paste0('ACGT', p5, 'TGCA'), 'GATT'))
+        c(paste0('AAAA', p5, 'cGNu'), paste0('ACGT', p5, 'TGCA'), 'GATT'))
 })
 
 test_that('batch extraction keeps input order and exact paired retention masks', {

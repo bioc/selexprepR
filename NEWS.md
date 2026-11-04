@@ -13,9 +13,16 @@
 * Add package-level help and runnable offline examples to all help pages.
   FASTQ examples create their inputs; a cached ENA inspection supports
   offline download planning. Only fresh ENA inspection requires a network.
-* Vectorize exact adapter matching, indel-aware candidate filtering and
-  strand evidence with Biostrings. Retain original approximate-match ranking
-  for matching residual reads, including paired retention masks. Batch the
+* Locate primers as cutadapt 5.2 does in the Python pipeline. A primer cut
+  short at the read start (5') or end (3') is accepted when at least 3 bases
+  align; among several occurrences the first acceptable one is kept unless a
+  later one overlaps it or covers more of the primer with a higher score; an
+  error at a primer edge is a substitution rather than a deletion. Synthetic
+  edge cases and the bundled real reads are now trimmed exactly as cutadapt
+  trims them; the example retains 228, 278 and 297 reads instead of 225, 277
+  and 294.
+* Vectorize exact primer matching and strand evidence with Biostrings; only
+  reads with a possible alternative match are aligned. Batch the
   reverse-complement canonicalization of distinct QC k-mers.
 * Use one reverse-complement implementation for counting and extraction,
   fixing the internal failure on other nucleotide symbols.

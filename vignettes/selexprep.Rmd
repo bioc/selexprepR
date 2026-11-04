@@ -138,8 +138,9 @@ not added to the counts. The result is therefore a documented subset, not a
 count of every molecule in the deposit. The counted sequences are the reverse
 complement of the aptamers printed in Table S8; use
 `reverse_complement(rownames(experiment))` to compare them with that table.
-Primers may match anywhere in a read, with up to 10% substitutions or indels
-(see `?selexprep_extract`). The retention and QC warnings below remain part
+Primers are located as cutadapt locates adapters: anywhere in a read, with up
+to 10% substitutions or indels, and possibly cut short at the read ends (see
+`?selexprep_extract`). The retention and QC warnings below remain part
 of the interpretation. `HIGH` and `MEDIUM` in an inferred report would
 describe read support, not independent confirmation of a biological
 constant/random boundary. Review the published library design before
@@ -234,7 +235,7 @@ plot(qc, experiment, which = "retention", cex = 1.2)
 ```
 
 Each round starts with 600 reads. The retained fraction ranges from about
-38% to 49%. Extraction targets one orientation in a mixed input, and reads
+38% to 50%. Extraction targets one orientation in a mixed input, and reads
 without both matching primers are excluded. On your data, inspect the primer
 sequences and read orientation if a round has unexpectedly low retention.
 
@@ -243,12 +244,12 @@ plot(qc, experiment, which = "length", cex = 1.2)
 ```
 
 Each point shows the fraction of retained reads at an observed length in
-one round. All three rounds peak at 39 nucleotides (214/225, 255/277 and
-266/294 reads). This agrees with the 39-nucleotide variable region reported
+one round. All three rounds peak at 39 nucleotides (219/228, 258/278 and
+270/297 reads). This agrees with the 39-nucleotide variable region reported
 for CS round 3 in Supplementary Note S8. A few reads extend past
-100 nucleotides (2, 3 and 5 reads, respectively). The plot measures the
-sequences recovered between the chosen flanks. All ten sequences above
-100 nucleotides contain a further copy of `primer_5p`, and nine contain the
+100 nucleotides (2, 2 and 5 reads, respectively). The plot measures the
+sequences recovered between the chosen flanks. All nine sequences above
+100 nucleotides contain a further copy of `primer_5p`, and eight contain the
 first 10 nucleotides of `primer_3p`; these are hints about their structure,
 not a determined origin. Each is counted as one sequence. Compare the peak
 with your library design and inspect the original reads and primer matches
@@ -263,7 +264,7 @@ The diversity panels show the number of distinct sequences, Shannon entropy
 and the fraction of reads contributed by the 100 most abundant sequences in
 each round. Compare them alongside read depth and retention when assessing
 how strongly a small set of sequences dominates a pool. In this example each
-round has only 206 to 244 distinct sequences among 225 to 294 reads, so the
+round has only 208 to 247 distinct sequences among 228 to 297 reads, so the
 100 most abundant sequences are already a large share of the distinct
 sequences observed. Read their coverage of about 0.48 to 0.53 in that
 context.

@@ -45,11 +45,15 @@ report. In split-primer paired-end mode, the two trimmed sides remain
 separate; they are never silently merged.
 }
 \details{
-Full-primer matching follows the cutadapt defaults used by the Python
-pipeline: adapters may occur away from the read boundary, substitutions
-and indels are allowed up to a 10 percent error rate, and RNA \code{U} is
-matched as DNA \code{T}. The returned insert retains the alphabet and case of
-the input read.
+Primers are located as cutadapt 5.2 locates adapters with its defaults, as
+in the Python pipeline. A primer may occur anywhere in the read, with
+substitutions and indels up to a 10 percent error rate over its aligned
+part. A 5' primer may be cut short at the read start and a 3' primer at the
+read end, if at least 3 of its bases align. When a read holds several
+acceptable occurrences, the first one is kept unless a later one overlaps
+it or covers more of the primer, and aligns with a higher score. IUPAC
+codes in a primer match the bases they stand for. RNA \code{U} is matched as DNA
+\code{T}. The returned insert retains the alphabet and case of the input read.
 }
 \examples{
 primer_5p <- 'GGTAATACGACTCACTATAGGG'
