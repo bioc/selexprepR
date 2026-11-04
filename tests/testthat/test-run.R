@@ -95,4 +95,24 @@ test_that("run_selexprep records manually reviewed primer overrides", {
         unname(Matrix::colSums(SummarizedExperiment::assay(experiment))),
         100
     )
+    expect_equal(metadata$library_report$match_rate_5p, 1)
+    expect_equal(metadata$library_report$match_rate_3p, 1)
+    expect_false("low_primer_match" %in% metadata$qc$flags$name)
+})
+
+test_that("primer overrides report match rates of the supplied primers", {
+    primer_5p <- "GGTAATACGACTCACTATAGGG"
+    primer_3p <- "CCATGCATGCATGCATGCAT"
+    one_substitution <- paste0("GGTAATACGACTCAGTATAGGG", "ACGT", primer_3p)
+    reads <- c(rep(paste0(primer_5p, "ACGT", primer_3p), 60L),
+        rep(one_substitution, 20L), rep(paste0("ACGT", primer_3p), 20L),
+        rep(substring(primer_5p, 2L), 20L))
+    report <- selexprepR:::.apply_primer_overrides(
+        selexprep_detect(list(round_00 = reads)),
+        primer_5p = primer_5p, primer_3p = primer_3p,
+        sequences_by_round = list(round_00 = reads)
+    )
+    # Reads shorter than a primer are excluded from its rate, as in detection.
+    expect_equal(report$match_rate_5p, 80 / 100)
+    expect_equal(report$match_rate_3p, 100 / 120)
 })

@@ -15,9 +15,12 @@
     selexprepR:::.new_library_report(fields)
 }
 
-test_that('reverse complement preserves names, case, ambiguity and empty input', {
+test_that('reverse complement keeps names and case, complements IUPAC codes', {
     expect_identical(reverse_complement(c(rna = 'aCGUn', ambiguity = 'Ryn?-')),
-        c(rna = 'nACGt', ambiguity = '-?nyR'))
+        c(rna = 'nACGt', ambiguity = '-?nrY'))
+    expect_identical(reverse_complement('RYKMSWBVDHN'), 'NDHBVWSKMRY')
+    codes <- 'ACGTRYKMSWBVDHNacgtrykmswbvdhn'
+    expect_identical(reverse_complement(reverse_complement(codes)), codes)
     expect_identical(reverse_complement(character()), character())
     expect_identical(reverse_complement(c('', 'ACGT')), c('', 'ACGT'))
     expect_identical(reverse_complement('\u00e9Ac'), 'gT\u00e9')

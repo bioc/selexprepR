@@ -56,7 +56,9 @@ run_selexprep <- function(sequences_by_round,
         !is.null(extraction_mode)
     report <- .apply_primer_overrides(
         report, primer_5p = primer_5p, primer_3p = primer_3p,
-        extraction_mode = extraction_mode
+        extraction_mode = extraction_mode,
+        sequences_by_round = inputs$sequences_by_round,
+        paired_mate_streams = inputs$paired_mate_streams
     )
     extracted <- system.time(extraction <- .extract_run_inputs(inputs, report))
     counted <- system.time(counts <- .run_count_tables(extraction, report))

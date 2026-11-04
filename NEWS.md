@@ -18,8 +18,12 @@
   for matching residual reads, including paired retention masks. Batch the
   reverse-complement canonicalization of distinct QC k-mers.
 * Use one reverse-complement implementation for counting and extraction,
-  preserving the public DNA/RNA, case and ambiguity policy and fixing the
-  internal failure on other nucleotide symbols.
+  fixing the internal failure on other nucleotide symbols.
+  `reverse_complement()` now complements IUPAC ambiguity codes (R/Y, K/M,
+  B/V, D/H) while keeping case, RNA input and other symbols.
+* Measure match rates for manually supplied primers on the earliest round,
+  so the library report and the `low_primer_match` QC flag describe the
+  primers actually used for extraction.
 * Simplify shared flank evidence, QC thresholds, mate pooling, barcode
   comparisons and verified downloads; preserve public result schemas, RNG
   behavior and failure diagnostics while shortening workflow functions.

@@ -14,13 +14,13 @@ values.}
 A character vector of reverse-complemented sequences.
 }
 \description{
-This function reproduces the sequence-counting behavior of the Python
-implementation. It accepts DNA or RNA bases, keeps input case, maps U/u to
-A/a, and preserves all other symbols, including IUPAC ambiguity codes.
-It is vectorized over \code{sequence} using Biostrings. A \code{BStringSet} reversal
-follows the explicit complement map because \code{reverseComplement()} on a
-\code{DNAStringSet} would complement IUPAC codes and discard input case, changing
-the Python-compatible counting contract.
+Accepts DNA or RNA bases and keeps input case. A/T, C/G and the IUPAC
+ambiguity codes are complemented (R/Y, K/M, B/V, D/H; S, W and N are their
+own complements), and U/u maps to A/a. Other symbols are kept unchanged.
+It is vectorized over \code{sequence} using Biostrings. Unlike
+\code{Biostrings::reverseComplement()} on a \code{DNAStringSet}, it keeps
+lowercase letters and accepts RNA and non-IUPAC symbols, so read sequences
+are returned in their original alphabet.
 }
 \examples{
 reverse_complement(c('ACGT', 'ACGU', 'ANNT'))

@@ -214,8 +214,62 @@
     }
 }
 
+# Fraction of reads containing `primer` with at most one substitution, fully
+# inside the read. Same definition as the detection match rate, vectorized.
+.primer_match_rate <- function(sequences, primer) {
+    if (is.null(primer) || !length(sequences)) {
+        return(0)
+    }
+    sequences <- .normalise_adapter_alphabet(sequences)
+    primer <- .normalise_adapter_alphabet(primer)
+    usable <- sequences[nchar(sequences) >= nchar(primer)]
+    if (!length(usable)) {
+        return(0)
+    }
+    hits <- Biostrings::vmatchPattern(Biostrings::BString(primer),
+        Biostrings::BStringSet(usable), max.mismatch = 1L, fixed = TRUE)
+    counts <- S4Vectors::elementNROWS(hits)
+    read <- rep(seq_along(usable), counts)
+    inside <- unlist(Biostrings::startIndex(hits), use.names = FALSE) >= 1L &
+        unlist(Biostrings::endIndex(hits), use.names = FALSE) <=
+        nchar(usable)[read]
+    matched <- logical(length(usable))
+    matched[unique(read[inside])] <- TRUE
+    mean(matched)
+}
+
+# Match rates of supplied primers, measured on the earliest round in the
+# orientation used for extraction.
+.override_match_rates <- function(fields, primer_5p, primer_3p,
+    sequences_by_round, paired_mate_streams) {
+    if (is.null(sequences_by_round) || !length(sequences_by_round)) {
+        return(fields)
+    }
+    earliest <- .as_round_pools(sequences_by_round, "sequences_by_round")[[1L]]
+    if (identical(fields$orientation, "REVERSE")) {
+        earliest <- reverse_complement(earliest)
+    }
+    if (!is.null(primer_5p)) {
+        fields$match_rate_5p <- .primer_match_rate(earliest, primer_5p)
+    }
+    if (!is.null(primer_3p)) {
+        if (identical(fields$extraction_mode, "PAIRED_END_SPLIT_PRIMERS")) {
+            if (!is.null(paired_mate_streams) && length(paired_mate_streams)) {
+                mates <- .as_round_pools(paired_mate_streams,
+                    "paired_mate_streams")[[1L]]
+                fields$match_rate_3p <- .primer_match_rate(mates,
+                    reverse_complement(primer_3p))
+            }
+        } else {
+            fields$match_rate_3p <- .primer_match_rate(earliest, primer_3p)
+        }
+    }
+    fields
+}
+
 .apply_primer_overrides <- function(report, primer_5p = NULL,
-    primer_3p = NULL, extraction_mode = NULL) {
+    primer_3p = NULL, extraction_mode = NULL, sequences_by_round = NULL,
+    paired_mate_streams = NULL) {
     requested <- !is.null(primer_5p) || !is.null(primer_3p) ||
         !is.null(extraction_mode)
     if (!requested) {
@@ -234,6 +288,9 @@
     }
     extraction_mode <- .override_extraction_mode(fields, extraction_mode)
     .validate_override_primers(fields, extraction_mode)
+    fields$extraction_mode <- extraction_mode
+    fields <- .override_match_rates(fields, primer_5p, primer_3p,
+        sequences_by_round, paired_mate_streams)
     fields$extraction_mode <- extraction_mode
     fields$full_insert_recovered <- identical(extraction_mode,
         "BOTH_PRIMERS_SINGLE_READ")
@@ -299,12 +356,12 @@ selexprep_extract <- function(sequences_by_round, library_report,
 }
 
 .validated_extraction_report <- function(report, primer_5p, primer_3p,
-    extraction_mode) {
+    extraction_mode, sequences_by_round = NULL, paired_mate_streams = NULL) {
     if (!inherits(report, "selexprep_library_report")) {
         stop("`library_report` must be a selexprep_library_report.", call. = FALSE)
     }
     report <- .apply_primer_overrides(report, primer_5p, primer_3p,
-        extraction_mode)
+        extraction_mode, sequences_by_round, paired_mate_streams)
     if (identical(report$status, "UNABLE_TO_INFER") ||
         identical(report$extraction_mode, "UNABLE_TO_EXTRACT")) {
         stop(
@@ -411,7 +468,7 @@ selexprep_extract <- function(sequences_by_round, library_report,
     paired_mate_streams = NULL, primer_5p = NULL, primer_3p = NULL,
     extraction_mode = NULL, keep_masks = FALSE) {
     report <- .validated_extraction_report(library_report, primer_5p, primer_3p,
-        extraction_mode)
+        extraction_mode, sequences_by_round, paired_mate_streams)
     pools <- .as_round_pools(sequences_by_round, "sequences_by_round")
     strand_distribution <- lapply(pools, .strand_distribution,
         primer_5p = report$primer_5p, primer_3p = report$primer_3p)

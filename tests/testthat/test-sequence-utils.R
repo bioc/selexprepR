@@ -1,4 +1,4 @@
-test_that("reverse_complement matches the Python counting helper", {
+test_that("reverse_complement handles DNA, RNA, case and N", {
     expect_true(identical(
         reverse_complement(c("ACGT", "AAAA", "GGCC")),
         c("ACGT", "TTTT", "GGCC")

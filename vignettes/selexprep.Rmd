@@ -217,9 +217,11 @@ The `evidence` column holds the values behind each flag. In this example:
 - `low_total_reads`: every round has fewer than the default 10,000 reads.
 - `strand_mix`: more than 20% of the reads in each round start with the
   reverse complement of `primer_3p`, i.e. the opposite orientation.
-- `low_primer_match`: this flag uses the match rates measured during
-  detection, which are 0 here. They are not recomputed for the supplied
-  primers; use the retention figures above for those.
+- `low_primer_match`: with supplied primers, the match rates are measured
+  for those primers on the earliest round (reads containing the primer with
+  at most one substitution). Here they are 0.39 for `primer_5p` and 0.38 for
+  `primer_3p`, below the 0.40 threshold, because about half of the reads are
+  in the other orientation.
 - `adapter_contamination_high`: 489 of the 600 raw reads used for detection
   contain the TruSeq read-1 adapter. This describes the raw reads; the
   `truseq_reads_fraction` of the extracted sequences above is 0.

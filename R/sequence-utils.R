@@ -4,13 +4,13 @@
 
 #' Reverse-complement nucleotide sequences
 #'
-#' This function reproduces the sequence-counting behavior of the Python
-#' implementation. It accepts DNA or RNA bases, keeps input case, maps U/u to
-#' A/a, and preserves all other symbols, including IUPAC ambiguity codes.
-#' It is vectorized over `sequence` using Biostrings. A `BStringSet` reversal
-#' follows the explicit complement map because `reverseComplement()` on a
-#' `DNAStringSet` would complement IUPAC codes and discard input case, changing
-#' the Python-compatible counting contract.
+#' Accepts DNA or RNA bases and keeps input case. A/T, C/G and the IUPAC
+#' ambiguity codes are complemented (R/Y, K/M, B/V, D/H; S, W and N are their
+#' own complements), and U/u maps to A/a. Other symbols are kept unchanged.
+#' It is vectorized over `sequence` using Biostrings. Unlike
+#' `Biostrings::reverseComplement()` on a `DNAStringSet`, it keeps lowercase
+#' letters and accepts RNA and non-IUPAC symbols, so read sequences are
+#' returned in their original alphabet.
 #'
 #' @param sequence A character vector of nucleotide sequences without missing
 #'   values.
@@ -27,7 +27,8 @@ reverse_complement <- function(sequence) {
     if (anyNA(sequence)) {
         stop("`sequence` must not contain missing values.", call. = FALSE)
     }
-    complements <- chartr("ACGTUNacgtun", "TGCAANtgcaan", sequence)
+    complements <- chartr("ACGTUNRYKMSWBVDHacgtunrykmswbvdh",
+        "TGCAANYRMKSWVBHDtgcaanyrmkswvbhd", sequence)
     bytewise <- nchar(complements, type = "bytes") == nchar(complements)
     result <- complements
     result[bytewise] <- as.character(Biostrings::reverse(

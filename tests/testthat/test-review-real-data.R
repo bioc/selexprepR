@@ -59,6 +59,9 @@ test_that("real FASTQ workflow records safe inference and honest retention", {
         c(round_03 = 600, round_05 = 600, round_07 = 600))
     expect_true("low_total_reads" %in%
         S4Vectors::metadata(experiment)$qc$flags$name)
+    report <- S4Vectors::metadata(experiment)$library_report
+    expect_equal(report$match_rate_5p, 236 / 600)
+    expect_equal(report$match_rate_3p, 228 / 600)
     expect_identical(S4Vectors::metadata(experiment)$manifest$parameters[[
         "manual_primer_override"]], "true")
 })
