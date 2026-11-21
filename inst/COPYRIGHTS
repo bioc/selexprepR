@@ -1,0 +1,13 @@
+selexprepR is copyright (c) 2026 Marco Rota Negroni and distributed under
+the MIT license (see the LICENSE file of the package).
+
+R/primer-match.R contains an R port of the alignment algorithm of cutadapt
+5.2 (src/cutadapt/_align.pyx, Aligner.locate), https://github.com/marcelm/cutadapt.
+
+    Copyright (c) 2010 Marcel Martin <marcel.martin@scilifelab.se> and
+    contributors
+
+cutadapt is distributed under the MIT license. Its full license and copyright
+notice is retained verbatim in licenses/cutadapt-MIT.txt.
+
+Other bundled materials and their terms are listed in DATA_LICENSES.md.

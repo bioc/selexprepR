@@ -1,3 +1,10 @@
+# selexprepR 0.99.8
+
+* Credit cutadapt for the aligner ported in `R/primer-match.R`: its MIT
+  license and copyright notice are in `inst/licenses/cutadapt-MIT.txt`,
+  summarized in `inst/COPYRIGHTS`, and Marcel Martin is listed as copyright
+  holder in `DESCRIPTION`.
+
 # selexprepR 0.99.7
 
 * Replace the identical synthetic-round vignette with licensed, attributed

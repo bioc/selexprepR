@@ -1,5 +1,11 @@
-# Primer location follows the cutadapt 5.2 aligner used by Python selexprep
-# (src/cutadapt/_align.pyx, Aligner.locate). A 5' primer is a cutadapt
+# This file ports to R the aligner of cutadapt 5.2
+# (https://github.com/marcelm/cutadapt, src/cutadapt/_align.pyx,
+# Aligner.locate).
+# cutadapt: Copyright (c) 2010 Marcel Martin <marcel.martin@scilifelab.se>
+# and contributors. MIT license; the full notice is in
+# inst/licenses/cutadapt-MIT.txt (see also inst/COPYRIGHTS).
+#
+# Python selexprep trims primers with cutadapt. Here a 5' primer is a cutadapt
 # regular 5' adapter (-g) and a 3' primer a regular 3' adapter (-a): up to 10%
 # errors (substitutions or indels) over the aligned part of the primer, at
 # least 3 aligned primer bases, so a primer may be cut short at the read start

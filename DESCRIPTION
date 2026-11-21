@@ -1,16 +1,20 @@
 Package: selexprepR
 Title: Preprocessing Public HT-SELEX Sequencing Data
-Version: 0.99.7
-Authors@R:
+Version: 0.99.8
+Authors@R: c(
     person(given = "Marco", family = "Rota Negroni",
            email = "marco.rotanegroni@gmail.com",
-           role = c("aut", "cre"))
+           role = c("aut", "cre")),
+    person(given = "Marcel", family = "Martin",
+           role = "cph",
+           comment = "Author of cutadapt, whose aligner is ported in R/primer-match.R"))
 Description: Provides reproducible preprocessing for high-throughput
     SELEX sequencing data. Supports primer inference, extraction of random
     regions, sparse sequence counting across rounds, quality control, and
     provenance manifests. Public-study discovery and checksum-aware ENA FASTQ
     download planning are included for reproducible data acquisition.
 License: MIT + file LICENSE
+Copyright: See file inst/COPYRIGHTS
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
