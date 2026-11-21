@@ -43,7 +43,11 @@ test_that("run_selexprep does not count half-inserts from a split pair", {
         .run_synthetic_pool(round, reverse_complement(primer_3p), random_length = 80L)
     }), sprintf("round_%02d", 0:2))
 
-    result <- run_selexprep(r1, read_source = "R1_AND_R2", paired_mate_streams = r2)
+    expect_warning(
+        result <- run_selexprep(r1, read_source = "R1_AND_R2",
+            paired_mate_streams = r2),
+        "split between R1 and R2.*no sequence was counted"
+    )
 
     expect_identical(dim(result), c(0L, 3L))
     expect_true(S4Vectors::metadata(result)$counting_skipped)

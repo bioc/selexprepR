@@ -9,9 +9,18 @@ repository at commit `63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5`.
 - Snapshot date: 2026-10-02
 - CSV SHA-256:
   `121b599786a718d877bd950660a3a4e0ec178db2f1b54636815d575185c3e0fe`
-- Immutable CSV: <https://github.com/marcorotanegroni/selexprep/blob/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/src/selexprep/catalog/data/curated_metadata.csv>
-- Canonical provenance JSON: <https://github.com/marcorotanegroni/selexprep/blob/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/src/selexprep/catalog/data/curated_metadata.json>
-- Curation materials: <https://github.com/marcorotanegroni/selexprep/tree/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/benchmarks/dual_extraction>
+- Archived release: selexprep v0.4.6,
+  [doi:10.5281/zenodo.23104868](https://doi.org/10.5281/zenodo.23104868). Its
+  archive `selexprep-0.4.6.zip` is the tree of the commit above and holds the
+  CSV with the SHA-256 given here.
+- Immutable CSV: <https://archive.softwareheritage.org/browse/revision/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/?path=src/selexprep/catalog/data/curated_metadata.csv>
+- Canonical provenance JSON: <https://archive.softwareheritage.org/browse/revision/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/?path=src/selexprep/catalog/data/curated_metadata.json>
+- Curation materials: <https://archive.softwareheritage.org/browse/revision/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/?path=benchmarks/dual_extraction>
+
+The three links above point to the Software Heritage archive of that commit.
+The commit identifier is the one the snapshot was taken from; the tag `v0.4.6`
+of the upstream repository now names a commit with the same files and a
+different identifier.
 
 Relative to the v0.4.1 flat catalog, v0.4.6 changes only PRJEB114397
 (PFOA)'s target class to `small molecule`; the 240 identifiers and curation
@@ -31,7 +40,7 @@ The catalog compilation and curation annotations are distributed under the
 MIT license of the upstream selexprep repository, copyright 2026 Marco Rota
 Negroni. The full upstream notice is retained in `licenses/selexprep-MIT.txt`;
 the immutable source license is
-<https://github.com/marcorotanegroni/selexprep/blob/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/LICENSE>.
+<https://archive.softwareheritage.org/browse/revision/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/?path=LICENSE>.
 This applies to both the CSV and the R DataFrame derived from it.
 
 The flat catalog contains identifiers, study titles and short factual

@@ -26,9 +26,12 @@ test_that("file diagnostics reveal a bad FASTQ masked by the same round", {
     paths <- c(bad, empty, good)
 
     expect_warning(
-        experiment <- run_selexprep_files(paths, round = 0L,
-            primer_5p = p5, primer_3p = p3, low_total_reads = 0L),
-        "input FASTQ.*kept 0 of 200 reads"
+        expect_warning(
+            experiment <- run_selexprep_files(paths, round = 0L,
+                primer_5p = p5, primer_3p = p3, low_total_reads = 0L),
+            "input FASTQ.*kept 0 of 200 reads"
+        ),
+        "FASTQ file\\(s\\) with no reads"
     )
     extraction <- S4Vectors::metadata(experiment)$extraction
     yields <- extraction$input_yields
@@ -78,10 +81,13 @@ test_that("paired file yields count the jointly retained pairs once", {
     paths <- c(bad_r2, bad_r1, good_r2, good_r1)
     mates <- c("R2", "R1", "R2", "R1")
     expect_warning(
-        experiment <- run_selexprep_files(paths, round = 0L, mate = mates,
-            primer_5p = p5, primer_3p = p3,
-            extraction_mode = "PAIRED_END_SPLIT_PRIMERS"),
-        "1 input FASTQ.*kept 0 of 200 reads"
+        expect_warning(
+            experiment <- run_selexprep_files(paths, round = 0L, mate = mates,
+                primer_5p = p5, primer_3p = p3,
+                extraction_mode = "PAIRED_END_SPLIT_PRIMERS"),
+            "1 input FASTQ.*kept 0 of 200 reads"
+        ),
+        "split between R1 and R2"
     )
     metadata <- S4Vectors::metadata(experiment)
     extraction <- metadata$extraction

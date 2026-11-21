@@ -378,6 +378,68 @@
     }, numeric(1)), names(.known_adapters))
     hits[order(names(hits), method = "radix")]
 }
+# Name of a known adapter whose probe lies anywhere in `primer`. The prefix
+# check above drops a candidate that starts with an adapter; when reads run past
+# the construct, a called constant can instead end in the adapter or be the
+# adapter after a base or two of the real constant.
+.known_adapter_within <- function(primer) {
+    if (is.null(primer) || !nzchar(primer)) {
+        return(NULL)
+    }
+    primer <- toupper(primer)
+    reverse_adapters <- .adapter_reverse_complements()
+    for (name in names(.known_adapters)) {
+        forward <- substr(.known_adapters[[name]], 1L, .adapter_probe_length)
+        reverse <- substr(reverse_adapters[[name]], 1L, .adapter_probe_length)
+        if (grepl(forward, primer, fixed = TRUE) ||
+            grepl(reverse, primer, fixed = TRUE)) {
+            return(name)
+        }
+    }
+    NULL
+}
+# Two calls are valid for the reads but easy to misuse: a constant that
+# contains a sequencing adapter, and a one-sided extraction mode. `supplied`
+# names the sides ("5'", "3'") whose primer the user gave, which are not
+# inferred; with `mode_supplied` the user chose the extraction mode.
+.warn_about_inferred_library <- function(report, supplied = character(),
+    mode_supplied = FALSE) {
+    if (identical(report$status, "UNABLE_TO_INFER")) {
+        return(invisible(report))
+    }
+    primers <- list("5'" = report$primer_5p, "3'" = report$primer_3p)
+    for (side in setdiff(names(primers), supplied)) {
+        adapter <- .known_adapter_within(primers[[side]])
+        if (!is.null(adapter)) {
+            warning(sprintf(paste(
+                "The inferred %s primer (%s) contains the %s sequencing",
+                "adapter. The reads run past the library construct into the",
+                "adapter, so this call may be the adapter, or your constant",
+                "with adapter appended. Check it against your library design;",
+                "if it is not your constant, supply `primer_5p`, `primer_3p`",
+                "and `extraction_mode`."
+            ), side, primers[[side]], adapter), call. = FALSE)
+        }
+    }
+    kept <- c(
+        FIVE_PRIME_ONLY = paste("after the random region",
+            "(the 3' constant, any adapter)"),
+        THREE_PRIME_ONLY = "before the random region (the 5' constant)"
+    )[report$extraction_mode]
+    # With both primers set after an override, extraction has already warned
+    # that one of them is not trimmed.
+    both_set <- length(supplied) && !is.null(report$primer_5p) &&
+        !is.null(report$primer_3p)
+    if (!is.na(kept) && !mode_supplied && !both_set) {
+        message(sprintf(paste(
+            "Only one constant was found (extraction_mode %s), so extraction",
+            "trims that side only and the sequences keep whatever lies %s.",
+            "If you know both primers, supply them with",
+            "extraction_mode = \"BOTH_PRIMERS_SINGLE_READ\"."
+        ), report$extraction_mode, kept))
+    }
+    invisible(report)
+}
 .top_variants <- function(sequences, length, is_prefix, k = 3L, offset = 0L) {
     if (!length) {
         return(list())
@@ -681,6 +743,18 @@
 #' boundary. When diverse early rounds are absent, consult the published
 #' library design and use reviewed primer overrides if needed.
 #'
+#' Two calls are valid for the reads but easy to misuse, and are reported. A
+#' called primer that contains a known sequencing adapter emits a warning: the
+#' reads run past the construct into the adapter. A one-sided `extraction_mode`
+#' (`FIVE_PRIME_ONLY`, `THREE_PRIME_ONLY`) emits a message: extraction then
+#' trims one side and the sequences keep the rest of the read.
+#'
+#' The fields of the report are described in [selexprep-classes].
+#' `status` is `HIGH`, `MEDIUM`, `LOW` or `UNABLE_TO_INFER`; `extraction_mode`
+#' is `BOTH_PRIMERS_SINGLE_READ`, `FIVE_PRIME_ONLY`, `THREE_PRIME_ONLY`,
+#' `PAIRED_END_SPLIT_PRIMERS` or `UNABLE_TO_EXTRACT`; `required_action` is
+#' `NONE`, `MANUAL_PRIMERS_REQUIRED` or `READ_MERGING_RECOMMENDED`.
+#'
 #' @param sequences_by_round A named list of character vectors or
 #'   `Biostrings::XStringSet` objects. Each element is one sequencing round.
 #' @param read_source One of `'R1'`, `'R2'`, `'R1_AND_R2'`, `'INTERLEAVED'`,
@@ -704,7 +778,18 @@ selexprep_detect <- function(sequences_by_round,
     read_source = c("R1", "R2", "R1_AND_R2", "INTERLEAVED", "UNKNOWN"),
     paired_mate_streams = NULL, sampling_seed = 42L,
     max_reads_per_round = NULL) {
-    read_source <- match.arg(read_source)
+    report <- .detect_library(
+        sequences_by_round, match.arg(read_source), paired_mate_streams,
+        sampling_seed, max_reads_per_round
+    )
+    .warn_about_inferred_library(report)
+    report
+}
+
+# Detection without the notes for the user: `run_selexprep()` gives them after
+# the overrides, when it knows which parts of the report are still inferred.
+.detect_library <- function(sequences_by_round, read_source,
+    paired_mate_streams, sampling_seed, max_reads_per_round) {
     .validate_detection_parameters(sampling_seed, max_reads_per_round)
     pools <- .as_round_pools(sequences_by_round, "sequences_by_round")
     if (!length(pools)) {

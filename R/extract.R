@@ -102,16 +102,21 @@
     }
     valid <- is.character(primer) && length(primer) == 1L &&
         !is.na(primer) && nzchar(primer)
-    if (!valid || grepl("[^ACGTU]", toupper(primer))) {
+    if (!valid || grepl("[^ACGTUNRYKMSWBVDH]", toupper(primer))) {
         stop(
             sprintf(
-                "`%s` must be one non-empty DNA or RNA sequence.",
+                paste("`%s` must be one non-empty DNA or RNA sequence;",
+                    "IUPAC ambiguity codes are allowed."),
                 argument
             ),
             call. = FALSE
         )
     }
     toupper(primer)
+}
+
+.extractable_modes <- function() {
+    setdiff(.extraction_modes, "UNABLE_TO_EXTRACT")
 }
 
 .override_extraction_mode <- function(fields, extraction_mode) {
@@ -131,12 +136,52 @@
         }
     }
     valid <- is.character(extraction_mode) && length(extraction_mode) == 1L &&
-        !is.na(extraction_mode) &&
-        extraction_mode %in% setdiff(.extraction_modes, "UNABLE_TO_EXTRACT")
+        !is.na(extraction_mode) && extraction_mode %in% .extractable_modes()
     if (!valid) {
-        stop("`extraction_mode` must name an extractable mode.", call. = FALSE)
+        stop(sprintf("`extraction_mode` must be one of %s.",
+            toString(.extractable_modes())), call. = FALSE)
     }
     extraction_mode
+}
+
+# A primer override replaces a primer and keeps the report's mode. With both
+# primers set and a one-sided mode nobody asked for, one primer is not trimmed.
+.warn_if_one_primer_untrimmed <- function(fields, requested_mode) {
+    trimmed <- c(FIVE_PRIME_ONLY = "5'", THREE_PRIME_ONLY = "3'")[
+        fields$extraction_mode]
+    if (!is.null(requested_mode) || is.na(trimmed) ||
+        is.null(fields$primer_5p) || is.null(fields$primer_3p)) {
+        return(invisible(NULL))
+    }
+    warning(sprintf(paste(
+        "Both primers are set, but the LibraryReport's extraction_mode is %s,",
+        "so only the %s primer is trimmed and every sequence keeps the other",
+        "constant. To trim both primers, add",
+        "extraction_mode = \"BOTH_PRIMERS_SINGLE_READ\"."
+    ), fields$extraction_mode, trimmed), call. = FALSE)
+}
+
+# A supplied primer found in almost none of the earliest round's reads does not
+# fit them as typed; the usual cause is a reverse primer given as ordered.
+.warn_if_primer_absent <- function(side, primer, rate, reads) {
+    if (rate >= 0.05 || grepl("[^ACGT]", .normalise_adapter_alphabet(primer))) {
+        return(invisible(NULL))
+    }
+    flipped <- reverse_complement(primer)
+    flipped_rate <- .primer_match_rate(reads, flipped)
+    hint <- if (flipped_rate >= 0.05) {
+        sprintf(paste0(" Its reverse complement, %s, is in %.1f%% of them: ",
+            "if that is your primer, pass it in that form."),
+            flipped, 100 * flipped_rate)
+    } else {
+        ""
+    }
+    warning(sprintf(paste0(
+        "The supplied %s primer %s is in %.1f%% of the earliest round's ",
+        "reads. Primers are matched as they read in the FASTQ, left to ",
+        "right, so a reverse primer must be given as it appears at the 3' ",
+        "end of the reads, not as ordered.%s"
+    ), side, primer, 100 * rate, hint), call. = FALSE)
 }
 
 .validate_override_primers <- function(fields, extraction_mode) {
@@ -204,6 +249,7 @@
     }
     if (!is.null(primer_5p)) {
         fields$match_rate_5p <- .primer_match_rate(earliest, primer_5p)
+        .warn_if_primer_absent("5'", primer_5p, fields$match_rate_5p, earliest)
     }
     if (!is.null(primer_3p)) {
         if (identical(fields$extraction_mode, "PAIRED_END_SPLIT_PRIMERS")) {
@@ -215,6 +261,8 @@
             }
         } else {
             fields$match_rate_3p <- .primer_match_rate(earliest, primer_3p)
+            .warn_if_primer_absent("3'", primer_3p, fields$match_rate_3p,
+                earliest)
         }
     }
     .override_insert_lengths(fields, earliest)
@@ -239,9 +287,11 @@
         fields$primer_3p <- primer_3p
         fields$variants_3p <- list()
     }
+    requested_mode <- extraction_mode
     extraction_mode <- .override_extraction_mode(fields, extraction_mode)
     .validate_override_primers(fields, extraction_mode)
     fields$extraction_mode <- extraction_mode
+    .warn_if_one_primer_untrimmed(fields, requested_mode)
     fields <- .override_match_rates(fields, primer_5p, primer_3p,
         sequences_by_round, paired_mate_streams)
     fields$extraction_mode <- extraction_mode
@@ -280,9 +330,18 @@
 #'   or `read_library_report()`.
 #' @param paired_mate_streams Optional named R2 sequence pools, required for
 #'   `PAIRED_END_SPLIT_PRIMERS` reports.
-#' @param primer_5p Optional manually reviewed 5-prime primer override.
-#' @param primer_3p Optional manually reviewed 3-prime primer override.
-#' @param extraction_mode Optional manually reviewed extraction-mode override.
+#' @param primer_5p Optional manually reviewed 5-prime primer override,
+#'   written as it reads at the start of the reads. IUPAC ambiguity codes are
+#'   allowed.
+#' @param primer_3p Optional manually reviewed 3-prime primer override,
+#'   written as it reads at the end of the reads: a reverse primer as ordered
+#'   is its reverse complement. A supplied primer found in under 5 percent of
+#'   the earliest round's reads emits a warning.
+#' @param extraction_mode Optional manually reviewed extraction-mode override:
+#'   `"BOTH_PRIMERS_SINGLE_READ"`, `"FIVE_PRIME_ONLY"`, `"THREE_PRIME_ONLY"` or
+#'   `"PAIRED_END_SPLIT_PRIMERS"`. A primer override keeps the report's mode,
+#'   so give `"BOTH_PRIMERS_SINGLE_READ"` with both primers when the report is
+#'   one-sided; otherwise one primer is left untrimmed, with a warning.
 #'
 #' @return A `selexprep_extraction`. Full and single-primer modes store one
 #'   `Biostrings::BStringSet` per round; paired split mode stores an `r1` and

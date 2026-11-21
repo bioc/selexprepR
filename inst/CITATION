@@ -1,0 +1,57 @@
+citHeader("To cite selexprepR in publications, please use:")
+
+bibentry(
+    bibtype = "Manual",
+    title = "selexprepR: Preprocessing Public HT-SELEX Sequencing Data",
+    author = person(given = "Marco", family = "Rota Negroni"),
+    year = "2026",
+    note = paste("R package version", meta$Version),
+    url = "https://bioconductor.org/packages/selexprepR",
+    textVersion = paste0(
+        "Rota Negroni M (2026). selexprepR: Preprocessing Public HT-SELEX ",
+        "Sequencing Data. R package version ", meta$Version, ". ",
+        "https://bioconductor.org/packages/selexprepR"
+    )
+)
+
+bibentry(
+    bibtype = "Misc",
+    header = "selexprepR implements the method of selexprep. Please also cite:",
+    title = paste(
+        "selexprep: accession-based preprocessing of public HT-SELEX data",
+        "with constant-region inference"
+    ),
+    author = person(given = "Marco", family = "Rota Negroni"),
+    year = "2026",
+    publisher = "Zenodo",
+    doi = "10.5281/zenodo.21240947",
+    textVersion = paste(
+        "Rota Negroni M (2026). selexprep: accession-based preprocessing of",
+        "public HT-SELEX data with constant-region inference. Zenodo.",
+        "https://doi.org/10.5281/zenodo.21240947"
+    )
+)
+
+bibentry(
+    bibtype = "Article",
+    header = paste(
+        "Primer location in selexprepR is a port of cutadapt.",
+        "If you extract random regions, please also cite:"
+    ),
+    title = paste(
+        "Cutadapt removes adapter sequences from high-throughput",
+        "sequencing reads"
+    ),
+    author = person(given = "Marcel", family = "Martin"),
+    journal = "EMBnet.journal",
+    year = "2011",
+    volume = "17",
+    number = "1",
+    pages = "10--12",
+    doi = "10.14806/ej.17.1.200",
+    textVersion = paste(
+        "Martin M (2011). Cutadapt removes adapter sequences from",
+        "high-throughput sequencing reads. EMBnet.journal, 17(1), 10-12.",
+        "https://doi.org/10.14806/ej.17.1.200"
+    )
+)

@@ -6,12 +6,20 @@
 #' assay. The LibraryReport, extraction result and QC report are retained in
 #' `metadata()` for reproducibility and inspection.
 #'
-#' Split-primer paired-end inputs return a valid zero-row experiment because
-#' full inserts cannot be counted without read merging. Their separate trimmed
-#' sides remain available in `metadata(result)$extraction`.
+#' Split-primer paired-end inputs return a valid zero-row experiment, with a
+#' warning, because full inserts cannot be counted without read merging. Their
+#' separate trimmed sides remain available in `metadata(result)$extraction`,
+#' and `metadata(result)$qc` is `NULL`.
 #'
 #' Library status rates read support, not a verified constant/random boundary.
 #' Check the published library design when diverse early rounds are absent.
+#' When reads are longer than the construct they run into the sequencing
+#' adapter: detection can then call the adapter as a primer, or find one
+#' constant only. Both cases are reported, the first with a warning; supply
+#' `primer_5p`, `primer_3p` and `extraction_mode` to extract the random region.
+#' With supplied primers the report has `status = "LOW"` and `confidence = 0`:
+#' nothing was inferred, so there is no inference to rate. The evidence for the
+#' supplied primers is in `match_rate_5p` and `match_rate_3p`.
 #' Extraction warns about low read retention; diagnostics remain in
 #' `metadata(result)$extraction$low_yield_rounds`. With FASTQ input bundles,
 #' per-file counts and warnings also remain in `input_yields` and
@@ -25,9 +33,16 @@
 #' @param sampling_seed Seed forwarded to `selexprep_detect()`.
 #' @param max_reads_per_round Optional detection subsampling cap.
 #' @param low_total_reads QC threshold for per-round read depth.
-#' @param primer_5p Optional manually reviewed 5-prime primer override.
-#' @param primer_3p Optional manually reviewed 3-prime primer override.
-#' @param extraction_mode Optional manually reviewed extraction-mode override.
+#' @param primer_5p Optional manually reviewed 5-prime primer override,
+#'   written as it reads at the start of the reads.
+#' @param primer_3p Optional manually reviewed 3-prime primer override,
+#'   written as it reads at the end of the reads: a reverse primer as ordered
+#'   is its reverse complement.
+#' @param extraction_mode Optional manually reviewed extraction-mode override:
+#'   `"BOTH_PRIMERS_SINGLE_READ"`, `"FIVE_PRIME_ONLY"`, `"THREE_PRIME_ONLY"` or
+#'   `"PAIRED_END_SPLIT_PRIMERS"`. A primer override keeps the inferred mode,
+#'   so give `"BOTH_PRIMERS_SINGLE_READ"` with both primers when detection
+#'   reported a one-sided mode.
 #'
 #' @return A `SummarizedExperiment` with the LibraryReport, extraction and QC
 #'   result in its metadata.
@@ -47,10 +62,9 @@ run_selexprep <- function(sequences_by_round,
         sequences_by_round, read_source, paired_mate_streams,
         read_source_supplied = !missing(read_source)
     )
-    detected <- system.time(report <- selexprep_detect(
-        inputs$sequences_by_round, read_source = inputs$read_source,
-        paired_mate_streams = inputs$paired_mate_streams,
-        sampling_seed = sampling_seed, max_reads_per_round = max_reads_per_round
+    detected <- system.time(report <- .detect_library(
+        inputs$sequences_by_round, inputs$read_source,
+        inputs$paired_mate_streams, sampling_seed, max_reads_per_round
     ))
     manual_override <- !is.null(primer_5p) || !is.null(primer_3p) ||
         !is.null(extraction_mode)
@@ -59,6 +73,11 @@ run_selexprep <- function(sequences_by_round,
         extraction_mode = extraction_mode,
         sequences_by_round = inputs$sequences_by_round,
         paired_mate_streams = inputs$paired_mate_streams
+    )
+    .warn_about_inferred_library(
+        report,
+        supplied = c("5'"[!is.null(primer_5p)], "3'"[!is.null(primer_3p)]),
+        mode_supplied = !is.null(extraction_mode)
     )
     extracted <- system.time(extraction <- .extract_run_inputs(inputs, report))
     counted <- system.time(counts <- .run_count_tables(extraction, report))
@@ -122,6 +141,14 @@ run_selexprep <- function(sequences_by_round,
 
 .run_count_tables <- function(extraction, report) {
     if (.run_needs_merging(report)) {
+        warning(paste(
+            "The primers are split between R1 and R2",
+            "(PAIRED_END_SPLIT_PRIMERS): no sequence was counted and the",
+            "experiment has zero rows. The trimmed sides are in",
+            "metadata(result)$extraction. To count full inserts, merge the",
+            "read pairs with a read merger and run the merged reads as",
+            "single-end input."
+        ), call. = FALSE)
         round_names <- names(extraction$sequences_by_round)
         empty <- lapply(round_names, function(round) {
             selexprep_count(character())

@@ -52,18 +52,52 @@ It works offline and carries snapshot provenance in
 `inspect_selexprep_accession()` before calling `fetch_selexprep_reads()`; the
 latter defaults to a checksum-aware dry-run plan.
 
-The R implementation is aligned to Python `selexprep v0.4.7` (commit
-`52975018fbe027625f75154dc464e667e4941818`), with independent R versioning.
-Shared constants are checked across rounds; extraction warns when fewer than
-half the reads survive, with separate FASTQ diagnostics for file workflows.
-`HIGH` and `MEDIUM` describe read support rather than a verified
-constant/random boundary. Consult the study's library design when a diverse
-early round is missing.
+The R implementation is aligned to Python `selexprep v0.4.8`
+([doi:10.5281/zenodo.24427025](https://doi.org/10.5281/zenodo.24427025)), with
+independent R versioning. Shared constants are checked across rounds;
+extraction warns when fewer than half the reads survive, with separate FASTQ
+diagnostics for file workflows. `HIGH` and `MEDIUM` describe read support
+rather than a verified constant/random boundary. Consult the study's library
+design when a diverse early round is missing.
+
+## With your own reads
+
+Look at what detection called before counting anything:
+
+```r
+report <- S4Vectors::metadata(experiment)$library_report
+report[c("status", "extraction_mode", "orientation", "primer_5p", "primer_3p",
+    "n_length_mode")]
+```
+
+`primer_5p`, `primer_3p` and `n_length_mode` (the most common random-region
+length) should match your library design. If your reads are longer than the
+construct they run into the sequencing adapter: detection can then call the
+adapter as a primer, with a warning, or find one constant only. Give your own
+primers, written as they read in the FASTQ from left to right, and the mode:
+
+```r
+experiment <- run_selexprep_files(
+    files,
+    primer_5p = "ATCCAGAGTGACGCAGCATTGC",
+    primer_3p = "TGGACACGGTGGCTTAGTCAA",
+    extraction_mode = "BOTH_PRIMERS_SINGLE_READ"
+)
+```
+
+The vignette section "Start with your own reads" covers paired-end files,
+reads in both orientations, replicates and export.
+
+## Citation
+
+`citation("selexprepR")` gives the references for the package and for the
+selexprep method. Primer location is a port of cutadapt, which should be cited
+with it.
 
 ## Development status
 
-This is the `0.99.7` submission candidate for Bioconductor. Development of the
-R package is hosted at <https://github.com/marcorotanegroni/selexprepR>; the
+selexprepR is in the Bioconductor development branch. Development of the R
+package is hosted at <https://github.com/marcorotanegroni/selexprepR>; the
 original Python implementation remains available at
 <https://github.com/marcorotanegroni/selexprep>.
 

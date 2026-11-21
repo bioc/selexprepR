@@ -15,7 +15,7 @@ format conversion of the CSV with package-specific provenance metadata. The
 CSV remains byte-identical to Python selexprep v0.4.6.
 
 The upstream grant is retained verbatim in `licenses/selexprep-MIT.txt`:
-<https://github.com/marcorotanegroni/selexprep/blob/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/LICENSE>.
+<https://archive.softwareheritage.org/browse/revision/63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5/?path=LICENSE>.
 
 The distributed flat table contains identifiers, study titles and short
 factual summaries of experimental parameters, together with curation status.

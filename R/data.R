@@ -49,7 +49,8 @@
 #'
 #' @source The snapshot was migrated without modification from the original
 #'   selexprep v0.4.6 catalog at commit
-#'   `63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5`. See the object metadata and
+#'   `63f33b44bb381c2c6b6ed131f3b98e8d6ff9d5f5`, archived as
+#'   \doi{10.5281/zenodo.23104868}. See the object metadata and
 #'   `inst/CATALOG_PROVENANCE.md` for immutable source links and terms.
 #' @examples
 #' data("selexprep_public_catalog", package = "selexprepR")

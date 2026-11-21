@@ -46,6 +46,18 @@ orientation estimates use the complete earliest-round flanks.
 \code{HIGH} and \code{MEDIUM} rate read support, not a verified constant/random
 boundary. When diverse early rounds are absent, consult the published
 library design and use reviewed primer overrides if needed.
+
+Two calls are valid for the reads but easy to misuse, and are reported. A
+called primer that contains a known sequencing adapter emits a warning: the
+reads run past the construct into the adapter. A one-sided \code{extraction_mode}
+(\code{FIVE_PRIME_ONLY}, \code{THREE_PRIME_ONLY}) emits a message: extraction then
+trims one side and the sequences keep the rest of the read.
+
+The fields of the report are described in \link{selexprep-classes}.
+\code{status} is \code{HIGH}, \code{MEDIUM}, \code{LOW} or \code{UNABLE_TO_INFER}; \code{extraction_mode}
+is \code{BOTH_PRIMERS_SINGLE_READ}, \code{FIVE_PRIME_ONLY}, \code{THREE_PRIME_ONLY},
+\code{PAIRED_END_SPLIT_PRIMERS} or \code{UNABLE_TO_EXTRACT}; \code{required_action} is
+\code{NONE}, \code{MANUAL_PRIMERS_REQUIRED} or \code{READ_MERGING_RECOMMENDED}.
 }
 \examples{
 p5 <- 'GGTAATACGACTCACTATAGGG'

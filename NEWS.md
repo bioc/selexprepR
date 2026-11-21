@@ -1,3 +1,35 @@
+# selexprepR 0.99.9
+
+* Aligned to Python selexprep v0.4.8
+  ([doi:10.5281/zenodo.24427025](https://doi.org/10.5281/zenodo.24427025)).
+  No call, status or extracted read changes. This version is about running
+  the package on your own reads.
+* `selexprep_detect()` warns when a called primer contains a sequencing
+  adapter, which happens when the reads run past the construct, and prints a
+  message when it finds one constant only, saying what the sequences will
+  keep.
+* Extraction warns when both primers are set but the mode is one-sided, so
+  that one primer is left untrimmed, and names
+  `extraction_mode = "BOTH_PRIMERS_SINGLE_READ"`. It warns when a supplied
+  primer is in under 5% of the earliest round's reads, and says so when its
+  reverse complement is there instead (a reverse primer typed as ordered).
+* `run_selexprep()` warns when the primers are split between R1 and R2 and no
+  sequence is counted. `read_selexprep_inputs()` warns about FASTQ files with
+  no reads and names a path that does not exist.
+* Supplied primers may carry IUPAC ambiguity codes, as the help of
+  `selexprep_extract()` already said. An invalid `extraction_mode` lists the
+  valid values.
+* The help pages give the values of `extraction_mode`, `status` and
+  `required_action`, say how to write the primers, and explain why a report
+  with supplied primers has `status = "LOW"`. The vignette and the README
+  have a guide for your own reads: reads longer than the construct, supplied
+  primers, replicates, run time, and counting both read orientations.
+* Catalog provenance links point to the archived release
+  ([doi:10.5281/zenodo.23104868](https://doi.org/10.5281/zenodo.23104868))
+  and to Software Heritage permalinks of the source commit. The dataset and
+  its metadata are unchanged.
+* Add `inst/CITATION`: the package, the selexprep method and cutadapt.
+
 # selexprepR 0.99.8
 
 * Credit cutadapt for the aligner ported in `R/primer-match.R`: its MIT

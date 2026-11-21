@@ -50,6 +50,34 @@ load your round-separated reads with `read_selexprep_inputs()` and inspect
 the report from `selexprep_detect()` before relying on the inferred boundaries.
 The example below shows both layout inspection and explicit primers.
 
+Write `primer_5p` and `primer_3p` as they read in the FASTQ from left to
+right. The 3' primer is what follows the random region in the read, so a
+reverse primer as ordered is its reverse complement; extraction warns when a
+supplied primer is in under 5% of the reads and says so if its reverse
+complement is there instead. A primer override keeps the inferred
+`extraction_mode`. Pass `extraction_mode = "BOTH_PRIMERS_SINGLE_READ"` with
+both primers to trim both; the other values are `"FIVE_PRIME_ONLY"`,
+`"THREE_PRIME_ONLY"` and `"PAIRED_END_SPLIT_PRIMERS"`.
+
+Check four things on your own data:
+
+- **Reads longer than the construct.** If the read length exceeds 5' constant
+  + random region + 3' constant, the reads run into the sequencing adapter.
+  Detection can then call the adapter as a primer, with a warning, or find
+  one constant only, with a message; the sequences then keep the other
+  constant and the adapter. Compare `primer_5p`, `primer_3p` and
+  `n_length_mode` in the report with your library design, and supply the
+  primers and the mode when they differ.
+- **Supplied primers.** The report then has `status = "LOW"` and
+  `confidence = 0`: nothing was inferred, so there is no inference to rate.
+  This is not a failed run. The evidence for your primers is in
+  `match_rate_5p` and `match_rate_3p`.
+- **Replicates.** Files that share a round number are pooled. To keep
+  replicates apart, run them separately.
+- **Run time.** Expect roughly a minute per 100,000 reads on a laptop, about
+  evenly split between detection and extraction. For a first look, pass
+  `max_reads_per_file = 20000`.
+
 # A small real-data example
 
 The example reads come from Zibin Zhao's hydrocortisone DL-SELEX deposit,
@@ -157,8 +185,10 @@ long, enough to cover the expected 72-nucleotide construct (two flanks and a
 the same when your R1 reads are long enough to contain both flanks. For
 paired inputs, specify both mates in every round. When the primers are split
 across mates, the trimmed sides remain separate and the experiment has no
-counted rows. In that case, merge the read pairs with an external tool and
-supply the merged FASTQ as one file per round.
+counted rows; `run_selexprep_files()` says so in a warning, and
+`S4Vectors::metadata(experiment)$qc` is `NULL`, so there is nothing to plot.
+In that case, merge the read pairs with an external tool and supply the merged
+FASTQ as one file per round.
 
 ```{r file-workflow}
 experiment <- run_selexprep_files(
@@ -199,6 +229,39 @@ half the best round's retained fraction. Inspect `low_yield_rounds` and
 `low_yield_inputs` in the extraction metadata. File-level checks prevent
 pooling from hiding one poorly matching input. Retention measures extraction
 success; it does not assess affinity.
+
+## Counting both read orientations
+
+A library prepared by ligation is sequenced from either end of each molecule,
+so about half of the reads are the reverse complement of the other half, as
+in this deposit. One run counts one orientation. To count both, run again
+with the primers of the opposite orientation, reverse-complement its
+sequences, and add the two tables:
+
+```{r both-orientations, warning = FALSE}
+opposite <- run_selexprep_files(
+    paths,
+    primer_5p = reverse_complement(primer_3p),
+    primer_3p = reverse_complement(primer_5p),
+    extraction_mode = "BOTH_PRIMERS_SINGLE_READ"
+)
+other <- SummarizedExperiment::assay(opposite, "counts")
+rownames(other) <- reverse_complement(rownames(other))
+sequences <- union(rownames(counts), rownames(other))
+both <- Matrix::Matrix(
+    0, length(sequences), ncol(counts),
+    dimnames = list(sequences, colnames(counts)), sparse = TRUE
+)
+both[rownames(counts), ] <- counts
+both[rownames(other), ] <- both[rownames(other), ] + other
+rbind(
+    chosen = Matrix::colSums(counts), opposite = Matrix::colSums(other),
+    both = Matrix::colSums(both)
+)
+```
+
+The retention warnings of the second run are the same kind as those of the
+first and are not printed again.
 
 # Quality control and its plot
 

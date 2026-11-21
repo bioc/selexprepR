@@ -33,11 +33,18 @@ run_selexprep(
 
 \item{low_total_reads}{QC threshold for per-round read depth.}
 
-\item{primer_5p}{Optional manually reviewed 5-prime primer override.}
+\item{primer_5p}{Optional manually reviewed 5-prime primer override,
+written as it reads at the start of the reads.}
 
-\item{primer_3p}{Optional manually reviewed 3-prime primer override.}
+\item{primer_3p}{Optional manually reviewed 3-prime primer override,
+written as it reads at the end of the reads: a reverse primer as ordered
+is its reverse complement.}
 
-\item{extraction_mode}{Optional manually reviewed extraction-mode override.}
+\item{extraction_mode}{Optional manually reviewed extraction-mode override:
+\code{"BOTH_PRIMERS_SINGLE_READ"}, \code{"FIVE_PRIME_ONLY"}, \code{"THREE_PRIME_ONLY"} or
+\code{"PAIRED_END_SPLIT_PRIMERS"}. A primer override keeps the inferred mode,
+so give \code{"BOTH_PRIMERS_SINGLE_READ"} with both primers when detection
+reported a one-sided mode.}
 }
 \value{
 A \code{SummarizedExperiment} with the LibraryReport, extraction and QC
@@ -51,12 +58,20 @@ assay. The LibraryReport, extraction result and QC report are retained in
 \code{metadata()} for reproducibility and inspection.
 }
 \details{
-Split-primer paired-end inputs return a valid zero-row experiment because
-full inserts cannot be counted without read merging. Their separate trimmed
-sides remain available in \code{metadata(result)$extraction}.
+Split-primer paired-end inputs return a valid zero-row experiment, with a
+warning, because full inserts cannot be counted without read merging. Their
+separate trimmed sides remain available in \code{metadata(result)$extraction},
+and \code{metadata(result)$qc} is \code{NULL}.
 
 Library status rates read support, not a verified constant/random boundary.
 Check the published library design when diverse early rounds are absent.
+When reads are longer than the construct they run into the sequencing
+adapter: detection can then call the adapter as a primer, or find one
+constant only. Both cases are reported, the first with a warning; supply
+\code{primer_5p}, \code{primer_3p} and \code{extraction_mode} to extract the random region.
+With supplied primers the report has \code{status = "LOW"} and \code{confidence = 0}:
+nothing was inferred, so there is no inference to rate. The evidence for the
+supplied primers is in \code{match_rate_5p} and \code{match_rate_3p}.
 Extraction warns about low read retention; diagnostics remain in
 \code{metadata(result)$extraction$low_yield_rounds}. With FASTQ input bundles,
 per-file counts and warnings also remain in \code{input_yields} and

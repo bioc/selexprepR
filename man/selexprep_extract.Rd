@@ -23,11 +23,20 @@ or \code{read_library_report()}.}
 \item{paired_mate_streams}{Optional named R2 sequence pools, required for
 \code{PAIRED_END_SPLIT_PRIMERS} reports.}
 
-\item{primer_5p}{Optional manually reviewed 5-prime primer override.}
+\item{primer_5p}{Optional manually reviewed 5-prime primer override,
+written as it reads at the start of the reads. IUPAC ambiguity codes are
+allowed.}
 
-\item{primer_3p}{Optional manually reviewed 3-prime primer override.}
+\item{primer_3p}{Optional manually reviewed 3-prime primer override,
+written as it reads at the end of the reads: a reverse primer as ordered
+is its reverse complement. A supplied primer found in under 5 percent of
+the earliest round's reads emits a warning.}
 
-\item{extraction_mode}{Optional manually reviewed extraction-mode override.}
+\item{extraction_mode}{Optional manually reviewed extraction-mode override:
+\code{"BOTH_PRIMERS_SINGLE_READ"}, \code{"FIVE_PRIME_ONLY"}, \code{"THREE_PRIME_ONLY"} or
+\code{"PAIRED_END_SPLIT_PRIMERS"}. A primer override keeps the report's mode,
+so give \code{"BOTH_PRIMERS_SINGLE_READ"} with both primers when the report is
+one-sided; otherwise one primer is left untrimmed, with a warning.}
 }
 \value{
 A \code{selexprep_extraction}. Full and single-primer modes store one

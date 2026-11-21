@@ -203,7 +203,14 @@ read_selexprep_inputs <- function(x, round = NULL, mate = NULL,
     valid_paths <- is.character(table$path) && length(table$path) == n_files &&
         !anyNA(table$path) && all(nzchar(table$path)) && all(file.exists(table$path))
     if (!valid_paths) {
-        stop("Every `path` must name an existing FASTQ file.", call. = FALSE)
+        missing_paths <- table$path[!is.na(table$path) &
+            !file.exists(table$path)]
+        stop(sprintf("Every `path` must name an existing FASTQ file%s",
+            if (length(missing_paths)) {
+                sprintf("; not found: %s.", toString(missing_paths))
+            } else {
+                "."
+            }), call. = FALSE)
     }
     table$path <- normalizePath(table$path, winslash = "/", mustWork = TRUE)
     if (anyDuplicated(table$path)) {
@@ -228,6 +235,10 @@ read_selexprep_inputs <- function(x, round = NULL, mate = NULL,
 .load_fastq_input_files <- function(table, max_reads) {
     sets <- lapply(table$path, read_selexprep_fastq, max_reads = max_reads)
     table$reads_loaded <- vapply(sets, length, integer(1))
+    if (any(table$reads_loaded == 0L)) {
+        warning(sprintf("FASTQ file(s) with no reads: %s.",
+            toString(table$path[table$reads_loaded == 0L])), call. = FALSE)
+    }
     table$file_size <- unname(file.info(table$path)$size)
     table$md5 <- vapply(table$path, digest::digest, character(1), algo = "md5",
         file = TRUE)
