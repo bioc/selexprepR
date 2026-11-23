@@ -1,3 +1,9 @@
+# selexprepR 0.99.10
+
+* Gabriele Sales is listed as a contributor. The affiliation,
+  Department of Biology, University of Padova, is recorded in `DESCRIPTION`.
+  The code does not change.
+
 # selexprepR 0.99.9
 
 * Aligned to Python selexprep v0.4.8

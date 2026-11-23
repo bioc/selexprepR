@@ -1,10 +1,16 @@
 Package: selexprepR
 Title: Preprocessing Public HT-SELEX Sequencing Data
-Version: 0.99.9
+Version: 0.99.10
 Authors@R: c(
     person(given = "Marco", family = "Rota Negroni",
            email = "marco.rotanegroni@gmail.com",
-           role = c("aut", "cre")),
+           role = c("aut", "cre"),
+           comment = c(affiliation =
+               "Department of Biology, University of Padova")),
+    person(given = "Gabriele", family = "Sales",
+           role = "ctb",
+           comment = c(affiliation =
+               "Department of Biology, University of Padova")),
     person(given = "Marcel", family = "Martin",
            role = "cph",
            comment = "Author of cutadapt, whose aligner is ported in R/primer-match.R"))
